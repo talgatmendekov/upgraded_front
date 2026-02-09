@@ -13,7 +13,7 @@
  * 3. Update the context files to use these API functions instead of localStorage
  */
 
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 const apiCall = async (endpoint, options = {}) => {
   const token = localStorage.getItem('authToken');
