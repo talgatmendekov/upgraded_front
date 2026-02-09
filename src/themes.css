@@ -1,0 +1,41 @@
+/* src/theme.css */
+
+/* Add this to your main CSS file or create a new theme.css file */
+
+:root[data-theme="dark"] {
+  --primary: #2563eb;
+  --secondary: #64748b;
+  --success: #10b981;
+  --danger: #ef4444;
+  --info: #06b6d4;
+  --warning: #f59e0b;
+  --bg-main: #0f172a;
+  --bg-card: #1e293b;
+  --bg-hover: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --border: #334155;
+  --accent: #fbbf24;
+}
+
+:root[data-theme="light"] {
+  --primary: #2563eb;
+  --secondary: #64748b;
+  --success: #10b981;
+  --danger: #ef4444;
+  --info: #06b6d4;
+  --warning: #f59e0b;
+  --bg-main: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-hover: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --border: #e2e8f0;
+  --accent: #f59e0b;
+}
+
+body {
+  background: var(--bg-main);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
