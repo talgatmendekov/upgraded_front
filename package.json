@@ -4,8 +4,10 @@
   "description": "University Schedule Management System",
   "private": true,
   "dependencies": {
+    "i18next": "^25.8.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-i18next": "^16.5.4",
     "react-scripts": "5.0.1"
   },
   "scripts": {

@@ -1,15 +1,14 @@
 // src/components/Header.js
-
-import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSchedule } from '../context/ScheduleContext';
 import ThemeToggle from './ThemeToggle';
+import logo from '../assets/logo.png';
 import './Header.css';
 
-const Header = ({ 
-  selectedDay, 
-  setSelectedDay, 
-  selectedTeacher, 
+const Header = ({
+  selectedDay,
+  setSelectedDay,
+  selectedTeacher,
   setSelectedTeacher,
   onAddGroup,
   onExport,
@@ -23,34 +22,38 @@ const Header = ({
     <div className="header">
       <div className="header-top">
         <div className="header-title">
-          <h1>University Schedule Builder</h1>
+          <div>
+            <img src={logo} alt="University Logo" className="logo" />
+            <h1>Ala-Too International University</h1>
+          </div>
+
           <p className="subtitle">Timetable Management System</p>
         </div>
-        
-       <div className="header-user">
-  <ThemeToggle />
-  {isAuthenticated ? (
-    <>
-      <span className="user-badge">
-        <span className="user-icon">👤</span>
-        {user.username} ({user.role})
-      </span>
-      <button onClick={logout} className="btn btn-secondary">
-        Logout
-      </button>
-    </>
-  ) : (
-    <span className="guest-badge">Guest Mode (View Only)</span>
-  )}
-</div>
+
+        <div className="header-user">
+          <ThemeToggle />
+          {isAuthenticated ? (
+            <>
+              <span className="user-badge">
+                <span className="user-icon">👤</span>
+                {user.username} ({user.role})
+              </span>
+              <button onClick={logout} className="btn btn-secondary">
+                Logout
+              </button>
+            </>
+          ) : (
+            <span className="guest-badge">Guest Mode (View Only)</span>
+          )}
+        </div>
       </div>
 
       <div className="header-controls">
         <div className="filters">
           <div className="filter-group">
             <label>Filter by Day:</label>
-            <select 
-              value={selectedDay} 
+            <select
+              value={selectedDay}
               onChange={(e) => setSelectedDay(e.target.value)}
               className="select-input"
             >
@@ -63,8 +66,8 @@ const Header = ({
 
           <div className="filter-group">
             <label>Filter by Teacher:</label>
-            <select 
-              value={selectedTeacher} 
+            <select
+              value={selectedTeacher}
               onChange={(e) => setSelectedTeacher(e.target.value)}
               className="select-input"
             >

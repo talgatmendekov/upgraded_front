@@ -18,6 +18,12 @@
   border-bottom: 1px solid var(--border);
 }
 
+.header-title div{
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
 .header-title h1 {
   font-size: 2rem;
   background: linear-gradient(135deg, var(--primary), var(--accent));
@@ -28,6 +34,7 @@
 }
 
 .subtitle {
+  
   color: var(--text-secondary);
   font-size: 1rem;
 }
@@ -117,6 +124,12 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.logo {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
 }
 
 @media (max-width: 1024px) {

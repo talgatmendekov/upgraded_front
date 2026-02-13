@@ -1,6 +1,5 @@
 // src/App.js
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ScheduleProvider, useSchedule } from './context/ScheduleContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -15,6 +14,7 @@ const AppContent = () => {
   const { isAuthenticated } = useAuth();
   const { addGroup, clearSchedule, exportSchedule, importSchedule, deleteGroup } = useSchedule();
   
+  
   const [guestMode, setGuestMode] = useState(false);
   const [selectedDay, setSelectedDay] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState('');
@@ -23,6 +23,22 @@ const AppContent = () => {
 
   const { loading: authLoading } = useAuth();
   const { loading: scheduleLoading } = useSchedule();
+
+  // Устанавливаем сегодняшний день при загрузке
+  useEffect(() => {
+    const today = new Date().getDay();
+    const dayMap = {
+      1: 'Monday',
+      2: 'Tuesday',
+      3: 'Wednesday',
+      4: 'Thursday',
+      5: 'Friday',
+      6: 'Saturday',
+      0: 'Sunday'
+    };
+    
+    setSelectedDay(dayMap[today]);
+  }, []);
 
   if (authLoading || scheduleLoading) {
     return (
