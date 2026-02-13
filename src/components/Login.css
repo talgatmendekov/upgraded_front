@@ -128,3 +128,51 @@
     font-size: 2rem;
   }
 }
+
+.login-lang {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.login-lang .lang-btn {
+  background: var(--bg-main);
+  border: 2px solid var(--border);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.login-lang .lang-btn:hover {
+  border-color: var(--primary);
+  color: var(--text-primary);
+}
+
+.login-lang .lang-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.login-submit {
+  width: 100%;
+  padding: 13px;
+  font-size: 1rem;
+}
+
+.btn-link {
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 0.95rem;
+  padding: 5px;
+}
+
+.btn-link:hover { color: #1d4ed8; }

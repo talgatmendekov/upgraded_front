@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { LANGUAGE_OPTIONS } from '../data/i18n';
 import './Login.css';
 
 const Login = ({ onViewAsGuest }) => {
@@ -9,60 +11,73 @@ const Login = ({ onViewAsGuest }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login } = useAuth();
+  const { lang, changeLang, t } = useLanguage();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
-    const result = login(username, password);
+    const result = await login(username, password);
     if (!result.success) {
-      setError(result.error);
+      setError(t('invalidCredentials'));
     }
   };
 
   return (
     <div className="login-container">
       <div className="login-box">
-        <div className="login-header">
-          <h1>University Schedule</h1>
-          <p>Admin Panel</p>
+        {/* Language selector on login page */}
+        <div className="login-lang">
+          {LANGUAGE_OPTIONS.map(opt => (
+            <button
+              key={opt.code}
+              className={`lang-btn ${lang === opt.code ? 'active' : ''}`}
+              onClick={() => changeLang(opt.code)}
+            >
+              {opt.flag} {opt.code.toUpperCase()}
+            </button>
+          ))}
         </div>
-        
-        <form onSubmit={handleSubmit} className="login-form">
+
+        <div className="login-header">
+          <h1>{t('loginTitle')}</h1>
+          <p>{t('loginSubtitle')}</p>
+        </div>
+
+        <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Username</label>
+            <label>{t('username')}</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter username"
+              placeholder={t('username')}
               required
             />
           </div>
-          
+
           <div className="form-group">
-            <label>Password</label>
+            <label>{t('password')}</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password"
+              placeholder={t('password')}
               required
             />
           </div>
-          
+
           {error && <div className="error-message">{error}</div>}
-          
-          <button type="submit" className="btn btn-primary">
-            Login as Admin
+
+          <button type="submit" className="btn btn-primary login-submit">
+            {t('loginBtn')}
           </button>
         </form>
-        
+
         <div className="login-footer">
           <button onClick={onViewAsGuest} className="btn-link">
-            View Schedule as Guest
+            {t('viewAsGuest')}
           </button>
-          <p className="hint">Default: admin / admin123</p>
+          <p className="hint">{t('loginHint')}</p>
         </div>
       </div>
     </div>

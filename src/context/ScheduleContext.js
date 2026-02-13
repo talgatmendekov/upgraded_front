@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import api from '../utils/api';
-import { DAYS } from '../data/constants';
+// src/context/ScheduleContext.js
+
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { UNIVERSITY_GROUPS, TIME_SLOTS, DAYS } from '../data/constants';
 
 const ScheduleContext = createContext();
 
@@ -13,148 +14,98 @@ export const useSchedule = () => {
 };
 
 export const ScheduleProvider = ({ children }) => {
-  const [groups, setGroups] = useState([]);
+  const [groups, setGroups] = useState(UNIVERSITY_GROUPS);
   const [schedule, setSchedule] = useState({});
-  const [teachers, setTeachers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [teachers, setTeachers] = useState(new Set());
 
-  // Load data on mount
   useEffect(() => {
-    loadData();
+    // Load schedule from localStorage
+    const savedSchedule = localStorage.getItem('universitySchedule');
+    const savedGroups = localStorage.getItem('universityGroups');
+    
+    if (savedSchedule) {
+      const parsedSchedule = JSON.parse(savedSchedule);
+      setSchedule(parsedSchedule);
+      extractTeachers(parsedSchedule);
+    }
+    if (savedGroups) {
+      setGroups(JSON.parse(savedGroups));
+    }
   }, []);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [groupsData, scheduleData, teachersData] = await Promise.all([
-        api.groups.getAll(),
-        api.schedule.getAll(),
-        api.schedule.getAllTeachers()
-      ]);
-      
-      setGroups(groupsData);
-      setSchedule(scheduleData);
-      setTeachers(teachersData);
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
-    }
+  const extractTeachers = (scheduleData) => {
+    const teacherSet = new Set();
+    Object.values(scheduleData).forEach(entry => {
+      if (entry.teacher) {
+        teacherSet.add(entry.teacher);
+      }
+    });
+    setTeachers(teacherSet);
   };
 
-  const addOrUpdateClass = async (group, day, time, classData) => {
-    try {
-      const result = await api.schedule.saveClass({
+  const saveSchedule = (newSchedule) => {
+    setSchedule(newSchedule);
+    localStorage.setItem('universitySchedule', JSON.stringify(newSchedule));
+    extractTeachers(newSchedule);
+  };
+
+  const addOrUpdateClass = (group, day, time, classData) => {
+    const key = `${group}-${day}-${time}`;
+    const newSchedule = {
+      ...schedule,
+      [key]: {
+        ...classData,
         group,
         day,
-        time,
-        ...classData
-      });
-
-      if (result.success) {
-        // Update local state
-        const key = `${group}-${day}-${time}`;
-        setSchedule(prev => ({
-          ...prev,
-          [key]: {
-            ...classData,
-            group,
-            day,
-            time,
-            id: result.data.id
-          }
-        }));
-
-        // Reload teachers list
-        const teachersData = await api.schedule.getAllTeachers();
-        setTeachers(teachersData);
-
-        return { success: true };
+        time
       }
-      return { success: false, error: result.error };
-    } catch (error) {
-      console.error('Error saving class:', error);
-      return { success: false, error: error.message };
-    }
+    };
+    saveSchedule(newSchedule);
   };
 
-  const deleteClass = async (group, day, time) => {
-    try {
-      const result = await api.schedule.deleteClass(group, day, time);
-      
-      if (result.success) {
-        // Update local state
-        const key = `${group}-${day}-${time}`;
-        setSchedule(prev => {
-          const newSchedule = { ...prev };
-          delete newSchedule[key];
-          return newSchedule;
-        });
-
-        // Reload teachers list
-        const teachersData = await api.schedule.getAllTeachers();
-        setTeachers(teachersData);
-
-        return { success: true };
-      }
-      return { success: false, error: result.error };
-    } catch (error) {
-      console.error('Error deleting class:', error);
-      return { success: false, error: error.message };
-    }
+  const deleteClass = (group, day, time) => {
+    const key = `${group}-${day}-${time}`;
+    const newSchedule = { ...schedule };
+    delete newSchedule[key];
+    saveSchedule(newSchedule);
   };
 
-  const addGroup = async (groupName) => {
-    try {
-      const result = await api.groups.add(groupName);
-      
-      if (result.success) {
-        setGroups(prev => [...prev, groupName]);
-        return { success: true };
-      }
-      return { success: false, error: result.error };
-    } catch (error) {
-      console.error('Error adding group:', error);
-      return { success: false, error: error.message };
-    }
+  const addGroup = (groupName) => {
+    const newGroups = [...groups, groupName];
+    setGroups(newGroups);
+    localStorage.setItem('universityGroups', JSON.stringify(newGroups));
   };
 
-  const deleteGroup = async (groupName) => {
-    try {
-      const result = await api.groups.delete(groupName);
-      
-      if (result.success) {
-        setGroups(prev => prev.filter(g => g !== groupName));
-        
-        // Remove schedules for this group from local state
-        setSchedule(prev => {
-          const newSchedule = {};
-          Object.entries(prev).forEach(([key, value]) => {
-            if (value.group !== groupName) {
-              newSchedule[key] = value;
-            }
-          });
-          return newSchedule;
-        });
-
-        return { success: true };
+  const deleteGroup = (groupName) => {
+    const newGroups = groups.filter(g => g !== groupName);
+    setGroups(newGroups);
+    localStorage.setItem('universityGroups', JSON.stringify(newGroups));
+    
+    // Delete all classes for this group
+    const newSchedule = {};
+    Object.entries(schedule).forEach(([key, value]) => {
+      if (value.group !== groupName) {
+        newSchedule[key] = value;
       }
-      return { success: false, error: result.error };
-    } catch (error) {
-      console.error('Error deleting group:', error);
-      return { success: false, error: error.message };
-    }
+    });
+    saveSchedule(newSchedule);
   };
 
-  const clearSchedule = async () => {
-    // This would need a backend endpoint to clear all schedules
-    // For now, you'd need to delete each schedule individually
-    console.warn('Clear schedule not implemented with backend');
+  const clearSchedule = () => {
+    saveSchedule({});
   };
 
   const getClassByKey = (group, day, time) => {
     const key = `${group}-${day}-${time}`;
     return schedule[key] || null;
+  };
+
+  const getScheduleByDay = (day) => {
+    return Object.entries(schedule).filter(([_, value]) => value.day === day);
+  };
+
+  const getScheduleByTeacher = (teacher) => {
+    return Object.entries(schedule).filter(([_, value]) => value.teacher === teacher);
   };
 
   const exportSchedule = () => {
@@ -166,28 +117,37 @@ export const ScheduleProvider = ({ children }) => {
     return JSON.stringify(data, null, 2);
   };
 
-  const importSchedule = async (jsonData) => {
-    // This would need careful handling with backend
-    console.warn('Import schedule not fully implemented with backend');
-    return { success: false, error: 'Import not yet supported' };
+  const importSchedule = (jsonData) => {
+    try {
+      const data = JSON.parse(jsonData);
+      if (data.groups && data.schedule) {
+        setGroups(data.groups);
+        saveSchedule(data.schedule);
+        localStorage.setItem('universityGroups', JSON.stringify(data.groups));
+        return { success: true };
+      }
+      return { success: false, error: 'Invalid data format' };
+    } catch (error) {
+      return { success: false, error: 'Invalid JSON' };
+    }
   };
 
   const value = {
     groups,
     schedule,
-    teachers,
-    timeSlots: ['08:00', '08:45', '09:30', '10:15', '11:00', '11:45', '12:30', '13:10', '14:00', '14:45', '15:30', '16:15', '17:00', '17:45'],
+    teachers: Array.from(teachers),
+    timeSlots: TIME_SLOTS,
     days: DAYS,
-    loading,
     addOrUpdateClass,
     deleteClass,
     addGroup,
     deleteGroup,
     clearSchedule,
     getClassByKey,
+    getScheduleByDay,
+    getScheduleByTeacher,
     exportSchedule,
-    importSchedule,
-    reload: loadData
+    importSchedule
   };
 
   return <ScheduleContext.Provider value={value}>{children}</ScheduleContext.Provider>;

@@ -1,42 +1,26 @@
 // src/App.js
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ScheduleProvider, useSchedule } from './context/ScheduleContext';
-import { ThemeProvider } from './context/ThemeContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import Login from './components/Login';
 import Header from './components/Header';
 import ScheduleTable from './components/ScheduleTable';
 import ClassModal from './components/ClassModal';
 import './App.css';
-import './themes.css';
 
 const AppContent = () => {
   const { isAuthenticated } = useAuth();
   const { addGroup, clearSchedule, exportSchedule, importSchedule, deleteGroup } = useSchedule();
-  
+  const { t } = useLanguage();
+
   const [guestMode, setGuestMode] = useState(false);
   const [selectedDay, setSelectedDay] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [currentCell, setCurrentCell] = useState({ group: null, day: null, time: null });
-
-  const { loading: authLoading } = useAuth();
-  const { loading: scheduleLoading } = useSchedule();
-
-  if (authLoading || scheduleLoading) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        fontSize: '1.5rem'
-      }}>
-        Loading...
-      </div>
-    );
-  }
 
   const handleEditClass = (group, day, time) => {
     setCurrentCell({ group, day, time });
@@ -49,7 +33,7 @@ const AppContent = () => {
   };
 
   const handleAddGroup = () => {
-    const groupName = prompt('Enter new group name (e.g., COMSE-25):');
+    const groupName = prompt(t('enterGroupName'));
     if (groupName && groupName.trim()) {
       addGroup(groupName.trim());
     }
@@ -77,9 +61,9 @@ const AppContent = () => {
         reader.onload = (event) => {
           const result = importSchedule(event.target.result);
           if (result.success) {
-            alert('Schedule imported successfully!');
+            alert(t('importSuccess'));
           } else {
-            alert(`Import failed: ${result.error}`);
+            alert(`${t('importFailed')} ${result.error}`);
           }
         };
         reader.readAsText(file);
@@ -89,7 +73,7 @@ const AppContent = () => {
   };
 
   const handleClearAll = () => {
-    if (window.confirm('Are you sure you want to clear the entire schedule? This action cannot be undone.')) {
+    if (window.confirm(t('confirmClearAll'))) {
       clearSchedule();
     }
   };
@@ -105,6 +89,8 @@ const AppContent = () => {
         setSelectedDay={setSelectedDay}
         selectedTeacher={selectedTeacher}
         setSelectedTeacher={setSelectedTeacher}
+        selectedGroup={selectedGroup}
+        setSelectedGroup={setSelectedGroup}
         onAddGroup={handleAddGroup}
         onExport={handleExport}
         onImport={handleImport}
@@ -114,6 +100,7 @@ const AppContent = () => {
       <ScheduleTable
         selectedDay={selectedDay}
         selectedTeacher={selectedTeacher}
+        selectedGroup={selectedGroup}
         onEditClass={handleEditClass}
         onDeleteGroup={deleteGroup}
       />
@@ -131,13 +118,13 @@ const AppContent = () => {
 
 function App() {
   return (
-     <ThemeProvider>
+    <LanguageProvider>
       <AuthProvider>
         <ScheduleProvider>
           <AppContent />
         </ScheduleProvider>
       </AuthProvider>
-    </ThemeProvider>
+    </LanguageProvider>
   );
 }
 

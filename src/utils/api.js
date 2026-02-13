@@ -13,28 +13,24 @@
  * 3. Update the context files to use these API functions instead of localStorage
  */
 
-const BASE_URL = process.env.REACT_APP_API_URL || 'https://railway.com/project/d045f0fa-3314-40c9-807b-dd0d3ef12b01/service/7f3f4416-b759-4b88-b9b2-4dd1d4e5e846?environmentId=2d51460d-8e18-4302-a536-4372e5f848b2';
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
+// Helper function for API calls
 const apiCall = async (endpoint, options = {}) => {
-  const token = localStorage.getItem('authToken');
-  
   try {
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       headers: {
         'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
       },
       ...options,
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
-      throw new Error(data.error || 'API call failed');
+      throw new Error(`API call failed: ${response.statusText}`);
     }
 
-    return data;
+    return await response.json();
   } catch (error) {
     console.error('API Error:', error);
     throw error;
@@ -43,96 +39,159 @@ const apiCall = async (endpoint, options = {}) => {
 
 // Authentication API
 export const authAPI = {
+  // Login admin user
   login: async (username, password) => {
-    return apiCall('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ username, password })
-    });
+    // TODO: Implement actual API call
+    // return apiCall('/auth/login', {
+    //   method: 'POST',
+    //   body: JSON.stringify({ username, password })
+    // });
+    
+    // Temporary localStorage implementation
+    return { success: true, user: { username, role: 'admin' } };
   },
 
+  // Logout
   logout: async () => {
-    return apiCall('/auth/logout', { method: 'POST' });
+    // TODO: Implement actual API call
+    // return apiCall('/auth/logout', { method: 'POST' });
+    return { success: true };
   },
 
-  verifyToken: async () => {
-    return apiCall('/auth/verify');
-  },
-
-  register: async (username, password, role) => {
-    return apiCall('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ username, password, role })
-    });
-  },
-
-  changePassword: async (currentPassword, newPassword) => {
-    return apiCall('/auth/change-password', {
-      method: 'POST',
-      body: JSON.stringify({ currentPassword, newPassword })
-    });
+  // Verify token
+  verifyToken: async (token) => {
+    // TODO: Implement actual API call
+    // return apiCall('/auth/verify', {
+    //   headers: { Authorization: `Bearer ${token}` }
+    // });
+    return { success: true };
   }
 };
 
 // Schedule API
 export const scheduleAPI = {
+  // Get all schedules
   getAll: async () => {
-    return apiCall('/schedules');
+    // TODO: Implement actual API call
+    // return apiCall('/schedules');
+    
+    const saved = localStorage.getItem('universitySchedule');
+    return saved ? JSON.parse(saved) : {};
   },
 
+  // Get schedule by ID
+  getById: async (id) => {
+    // TODO: Implement actual API call
+    // return apiCall(`/schedules/${id}`);
+    return null;
+  },
+
+  // Create or update a class
   saveClass: async (scheduleData) => {
-    return apiCall('/schedules', {
-      method: 'POST',
-      body: JSON.stringify(scheduleData)
-    });
+    // TODO: Implement actual API call
+    // return apiCall('/schedules', {
+    //   method: 'POST',
+    //   body: JSON.stringify(scheduleData)
+    // });
+    return { success: true, data: scheduleData };
   },
 
+  // Delete a class
   deleteClass: async (group, day, time) => {
-    return apiCall(`/schedules/${encodeURIComponent(group)}/${day}/${time}`, {
-      method: 'DELETE'
-    });
+    // TODO: Implement actual API call
+    // return apiCall(`/schedules/${group}/${day}/${time}`, {
+    //   method: 'DELETE'
+    // });
+    return { success: true };
   },
 
+  // Get schedule by day
   getByDay: async (day) => {
-    return apiCall(`/schedules/day/${day}`);
+    // TODO: Implement actual API call
+    // return apiCall(`/schedules/day/${day}`);
+    return [];
   },
 
+  // Get schedule by teacher
   getByTeacher: async (teacher) => {
-    return apiCall(`/schedules/teacher/${encodeURIComponent(teacher)}`);
+    // TODO: Implement actual API call
+    // return apiCall(`/schedules/teacher/${encodeURIComponent(teacher)}`);
+    return [];
   },
 
-  getByGroup: async (group) => {
-    return apiCall(`/schedules/group/${encodeURIComponent(group)}`);
+  // Export schedule
+  export: async () => {
+    // TODO: Implement actual API call
+    // return apiCall('/schedules/export');
+    const schedule = await scheduleAPI.getAll();
+    return { success: true, data: schedule };
   },
 
-  getAllTeachers: async () => {
-    return apiCall('/schedules/teachers');
+  // Import schedule
+  import: async (data) => {
+    // TODO: Implement actual API call
+    // return apiCall('/schedules/import', {
+    //   method: 'POST',
+    //   body: JSON.stringify(data)
+    // });
+    return { success: true };
   }
 };
 
 // Groups API
 export const groupsAPI = {
+  // Get all groups
   getAll: async () => {
-    return apiCall('/groups');
+    // TODO: Implement actual API call
+    // return apiCall('/groups');
+    
+    const saved = localStorage.getItem('universityGroups');
+    return saved ? JSON.parse(saved) : [];
   },
 
+  // Add a group
   add: async (groupName) => {
-    return apiCall('/groups', {
-      method: 'POST',
-      body: JSON.stringify({ name: groupName })
-    });
+    // TODO: Implement actual API call
+    // return apiCall('/groups', {
+    //   method: 'POST',
+    //   body: JSON.stringify({ name: groupName })
+    // });
+    return { success: true, data: { name: groupName } };
   },
 
+  // Delete a group
   delete: async (groupName) => {
-    return apiCall(`/groups/${encodeURIComponent(groupName)}`, {
-      method: 'DELETE'
-    });
+    // TODO: Implement actual API call
+    // return apiCall(`/groups/${encodeURIComponent(groupName)}`, {
+    //   method: 'DELETE'
+    // });
+    return { success: true };
   }
 };
 
-const api = {
-  auth: authAPI,
-  schedule: scheduleAPI,
-  groups: groupsAPI
+// Teachers API
+export const teachersAPI = {
+  // Get all teachers
+  getAll: async () => {
+    // TODO: Implement actual API call
+    // return apiCall('/teachers');
+    return [];
+  },
+
+  // Add a teacher
+  add: async (teacherName) => {
+    // TODO: Implement actual API call
+    // return apiCall('/teachers', {
+    //   method: 'POST',
+    //   body: JSON.stringify({ name: teacherName })
+    // });
+    return { success: true, data: { name: teacherName } };
+  }
 };
 
-export default api;
+export default {
+  auth: authAPI,
+  schedule: scheduleAPI,
+  groups: groupsAPI,
+  teachers: teachersAPI
+};
