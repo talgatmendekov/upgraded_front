@@ -1,55 +1,70 @@
 // src/context/AuthContext.js
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { DEFAULT_ADMIN } from '../data/constants';
+import { authAPI } from '../utils/api';
 
 const AuthContext = createContext();
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  // On mount: check if saved token is still valid
   useEffect(() => {
-    // Check if user is already logged in (from localStorage)
-    const savedUser = localStorage.getItem('scheduleUser');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-      setIsAuthenticated(true);
+    const savedToken = localStorage.getItem('scheduleToken');
+    const savedUser  = localStorage.getItem('scheduleUser');
+    if (savedToken && savedUser) {
+      // Verify token is still valid with backend
+      authAPI.verify()
+        .then(() => {
+          setUser(JSON.parse(savedUser));
+          setIsAuthenticated(true);
+        })
+        .catch(() => {
+          // Token expired or invalid â€” clear storage
+          localStorage.removeItem('scheduleToken');
+          localStorage.removeItem('scheduleUser');
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
   }, []);
 
-  const login = (username, password) => {
-    // TODO: Replace with actual API call to backend
-    if (username === DEFAULT_ADMIN.username && password === DEFAULT_ADMIN.password) {
-      const userData = { username, role: 'admin' };
-      setUser(userData);
-      setIsAuthenticated(true);
-      localStorage.setItem('scheduleUser', JSON.stringify(userData));
-      return { success: true };
+  const login = async (username, password) => {
+    try {
+      const data = await authAPI.login(username, password);
+      // Backend returns { success, token, user: { username, role } }
+      if (data.token) {
+        localStorage.setItem('scheduleToken', data.token);
+        localStorage.setItem('scheduleUser', JSON.stringify(data.user));
+        setUser(data.user);
+        setIsAuthenticated(true);
+        return { success: true };
+      }
+      return { success: false, error: 'No token received' };
+    } catch (err) {
+      return { success: false, error: err.message };
     }
-    return { success: false, error: 'Invalid credentials' };
   };
 
   const logout = () => {
+    localStorage.removeItem('scheduleToken');
+    localStorage.removeItem('scheduleUser');
     setUser(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('scheduleUser');
   };
 
-  const value = {
-    isAuthenticated,
-    user,
-    login,
-    logout
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, loading }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };

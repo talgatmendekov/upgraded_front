@@ -22,13 +22,14 @@ const getTodayScheduleDay = () => {
 };
 
 const AppContent = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const { addGroup, clearSchedule, importSchedule, deleteGroup,
-          schedule, groups, timeSlots, days } = useSchedule();
+          schedule, groups, timeSlots, days,
+          loading: scheduleLoading, error } = useSchedule();
   const { t } = useLanguage();
 
   const [guestMode, setGuestMode]         = useState(false);
-  const [activeTab, setActiveTab]         = useState('schedule'); // 'schedule'|'print'|'dashboard'|'conflicts'
+  const [activeTab, setActiveTab]         = useState('schedule');
   const [selectedDay, setSelectedDay]     = useState(getTodayScheduleDay);
   const [selectedTeacher, setSelectedTeacher] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
@@ -36,7 +37,7 @@ const AppContent = () => {
   const [currentCell, setCurrentCell]     = useState({ group: null, day: null, time: null });
   const [importing, setImporting]         = useState(false);
 
-  // Count conflicts for badge
+  // Count all conflicts for badge
   const conflictCount = React.useMemo(() => {
     const entries = Object.values(schedule);
     let count = 0;
@@ -50,8 +51,12 @@ const AppContent = () => {
           if (e.teacher) { const k = e.teacher.toLowerCase(); tMap[k] = (tMap[k]||0)+1; }
           if (e.room)    { const k = e.room.toLowerCase();    rMap[k] = (rMap[k]||0)+1; }
         });
-        Object.entries(tMap).forEach(([k,v]) => { if (v>1 && !seen.has(`t-${k}-${day}-${time}`)) { count++; seen.add(`t-${k}-${day}-${time}`); }});
-        Object.entries(rMap).forEach(([k,v]) => { if (v>1 && !seen.has(`r-${k}-${day}-${time}`)) { count++; seen.add(`r-${k}-${day}-${time}`); }});
+        Object.entries(tMap).forEach(([k,v]) => {
+          if (v>1 && !seen.has(`t-${k}-${day}-${time}`)) { count++; seen.add(`t-${k}-${day}-${time}`); }
+        });
+        Object.entries(rMap).forEach(([k,v]) => {
+          if (v>1 && !seen.has(`r-${k}-${day}-${time}`)) { count++; seen.add(`r-${k}-${day}-${time}`); }
+        });
       });
     });
     return count;
@@ -98,10 +103,16 @@ const AppContent = () => {
       try {
         const result = await importFromExcel(file);
         if (result.success) {
-          importSchedule(JSON.stringify({ groups: result.groups, schedule: result.schedule }));
-          alert(`${t('importSuccess')} ${result.groups.length} groups, ${Object.keys(result.schedule).length} classes imported.`);
+          const res = await importSchedule(JSON.stringify({
+            groups: result.groups, schedule: result.schedule
+          }));
+          if (res.success) {
+            alert(`${t('importSuccess')} ${result.groups.length} groups, ${Object.keys(result.schedule).length} classes.`);
+          } else {
+            alert(`${t('importFailed')} ${res.error}`);
+          }
         } else { alert(`${t('importFailed')} ${result.error}`); }
-      } catch (err) { alert(`${t('importFailed')} ${err.error || err.message}`); }
+      } catch (err) { alert(`${t('importFailed')} ${err.message}`); }
       finally { setImporting(false); }
     };
     input.click();
@@ -111,22 +122,41 @@ const AppContent = () => {
     if (window.confirm(t('confirmClearAll'))) clearSchedule();
   };
 
+  // Show loading spinner while verifying auth token
+  if (authLoading) {
+    return (
+      <div className="app-loading">
+        <div className="app-loading-spinner">â³</div>
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
   if (!isAuthenticated && !guestMode) {
     return <Login onViewAsGuest={() => setGuestMode(true)} />;
   }
 
   const tabs = [
-    { id: 'schedule',  icon: '📅', label: t('tabSchedule')  || 'Schedule' },
-    { id: 'print',     icon: '🖨️', label: t('tabPrint')     || 'Print / PDF' },
-    { id: 'dashboard', icon: '📊', label: t('tabDashboard') || 'Teacher Stats' },
-    { id: 'conflicts', icon: '🔔', label: t('tabConflicts') || 'Conflicts', badge: conflictCount },
+    { id: 'schedule',  icon: 'ðŸ“…', label: t('tabSchedule')  || 'Schedule' },
+    { id: 'print',     icon: 'ðŸ–¨ï¸', label: t('tabPrint')     || 'Print / PDF' },
+    { id: 'dashboard', icon: 'ðŸ“Š', label: t('tabDashboard') || 'Teacher Stats' },
+    { id: 'conflicts', icon: 'ðŸ””', label: t('tabConflicts') || 'Conflicts', badge: conflictCount },
   ];
 
   return (
     <div className="app">
-      {importing && (
+      {(importing || scheduleLoading) && (
         <div className="import-overlay">
-          <div className="import-spinner">⏳ {t('importing') || 'Importing...'}</div>
+          <div className="import-spinner">
+            â³ {scheduleLoading ? (t('loadingData') || 'Loading dataâ€¦') : (t('importing') || 'Importingâ€¦')}
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="error-banner">
+          âš ï¸ Could not connect to server: {error}.
+          <button onClick={() => window.location.reload()}>Retry</button>
         </div>
       )}
 
@@ -150,15 +180,12 @@ const AppContent = () => {
             <span className="tab-icon">{tab.icon}</span>
             <span className="tab-label">{tab.label}</span>
             {tab.badge > 0 && (
-              <span className={`tab-badge ${tab.badge > 0 ? 'tab-badge-warn' : ''}`}>
-                {tab.badge}
-              </span>
+              <span className="tab-badge tab-badge-warn">{tab.badge}</span>
             )}
           </button>
         ))}
       </div>
 
-      {/* Tab Content */}
       <div className="tab-content">
         {activeTab === 'schedule' && (
           <ScheduleTable

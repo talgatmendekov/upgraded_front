@@ -157,7 +157,7 @@ body {
   50% { opacity: 0.6; }
 }
 
-/* ── Tab Bar ──────────────────────────────────── */
+/* â”€â”€ Tab Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .tab-bar {
   display: flex;
   gap: 6px;
@@ -227,4 +227,30 @@ body {
   .tab-label { display: none; }
   .tab-icon  { font-size: 1.2rem; }
   .tab-btn.active .tab-label { display: inline; }
+}
+
+/* â”€â”€ Loading & Error states â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.app-loading {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100vh; gap: 16px;
+  color: var(--text-secondary);
+}
+.app-loading-spinner { font-size: 3rem; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-banner {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  padding: 12px 20px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 12px;
+  font-weight: 600; font-size: 0.9rem;
+}
+.error-banner button {
+  padding: 5px 14px; background: #ef4444; color: #fff;
+  border: none; border-radius: 6px; cursor: pointer;
+  font-weight: 700; font-size: 0.82rem; margin-left: auto;
 }
