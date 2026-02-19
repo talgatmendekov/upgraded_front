@@ -271,7 +271,7 @@
   color: #ef4444 !important;
 }
 
-/* ── Type pill inside cell ─────────────────────────── */
+/* â”€â”€ Type pill inside cell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .type-pill {
   display: inline-flex;
   align-items: center;
@@ -286,7 +286,7 @@
   letter-spacing: 0.4px;
 }
 
-/* ── Legend bar ────────────────────────────────────── */
+/* â”€â”€ Legend bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .type-legend {
   display: flex;
   align-items: center;
@@ -322,7 +322,7 @@
   font-weight: 400;
 }
 
-/* ── Drag & Drop states ────────────────────────────── */
+/* â”€â”€ Drag & Drop states â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .schedule-cell {
   position: relative;
   cursor: default;
@@ -353,7 +353,7 @@
   transform: scale(0.97);
 }
 
-/* Drop target — empty cell */
+/* Drop target â€” empty cell */
 .drag-over-empty {
   background: rgba(37,99,235,0.12) !important;
   border: 2px dashed #2563eb !important;
@@ -362,7 +362,7 @@
 
 .drag-over-empty .empty-cell { display: none; }
 
-/* Drop target — occupied cell (swap) */
+/* Drop target â€” occupied cell (swap) */
 .drag-over-filled {
   outline: 2px dashed #f59e0b !important;
   outline-offset: -2px;
@@ -387,3 +387,35 @@
 /* Drag cursor for filled cells */
 .schedule-cell[draggable="true"] { cursor: grab; }
 .schedule-cell[draggable="true"]:active { cursor: grabbing; }
+
+/* Multi-slot duration display */
+.schedule-cell.multi-slot {
+  vertical-align: top;
+  min-height: 120px;
+}
+
+.duration-indicator {
+  display: inline-block;
+  background: rgba(124,58,237,0.15);
+  color: #7c3aed;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin: 4px 0;
+  border: 1px solid rgba(124,58,237,0.3);
+}
+
+.schedule-cell.multi-slot .cell-content {
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 6px;
+}
+
+.schedule-cell.multi-slot .course-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.3;
+}

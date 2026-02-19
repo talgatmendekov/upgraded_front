@@ -1,6 +1,6 @@
 // src/components/ScheduleTable.js
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSchedule } from '../context/ScheduleContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -12,7 +12,6 @@ const getTodayName = () => {
   return days[new Date().getDay()];
 };
 
-// Get color config for a subject type
 const getTypeStyle = (subjectType) => {
   return SUBJECT_TYPES.find(s => s.value === subjectType) || SUBJECT_TYPES[0];
 };
@@ -27,10 +26,30 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
   const groupsToShow = selectedGroup ? groups.filter(g => g === selectedGroup) : groups;
   const typeLabels = SUBJECT_TYPE_LABELS[lang] || SUBJECT_TYPE_LABELS.en;
 
-  // Drag state
-  const [dragSource, setDragSource] = useState(null); // { group, day, time }
-  const [dragOver, setDragOver]     = useState(null);  // { group, day, time }
+  const [dragSource, setDragSource] = useState(null);
+  const [dragOver, setDragOver]     = useState(null);
   const dragNode = useRef(null);
+
+  // Build a map of which cells should be hidden (continuation cells)
+  const hiddenCells = useMemo(() => {
+    const hidden = new Set();
+    Object.values(schedule).forEach(entry => {
+      const duration = entry.duration || 1;
+      if (duration > 1) {
+        const startIdx = timeSlots.indexOf(entry.time);
+        if (startIdx !== -1) {
+          // Mark subsequent slots as hidden
+          for (let i = 1; i < duration; i++) {
+            if (startIdx + i < timeSlots.length) {
+              const nextTime = timeSlots[startIdx + i];
+              hidden.add(`${entry.group}-${entry.day}-${nextTime}`);
+            }
+          }
+        }
+      }
+    });
+    return hidden;
+  }, [schedule, timeSlots]);
 
   const shouldShowCell = (classData) => {
     if (!classData) return true;
@@ -51,11 +70,9 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
     return [...new Set(conflicts)];
   };
 
-  // ── Drag handlers ──────────────────────────────────────────
   const handleDragStart = (e, group, day, time) => {
     setDragSource({ group, day, time });
     dragNode.current = e.target;
-    // Ghost image styling - slight delay so browser captures styled element
     setTimeout(() => { if (dragNode.current) dragNode.current.style.opacity = '0.4'; }, 0);
     e.dataTransfer.effectAllowed = 'move';
   };
@@ -76,7 +93,6 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
   };
 
   const handleDragLeave = (e) => {
-    // Only clear if actually leaving the cell (not entering a child)
     if (!e.currentTarget.contains(e.relatedTarget)) {
       setDragOver(null);
     }
@@ -86,7 +102,6 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
     e.preventDefault();
     if (!dragSource) return;
     const { group: fromGroup, day: fromDay, time: fromTime } = dragSource;
-    // Don't drop on same cell
     if (fromGroup === toGroup && fromDay === toDay && fromTime === toTime) {
       handleDragEnd();
       return;
@@ -95,7 +110,6 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
     handleDragEnd();
   };
 
-  // ── Legend ────────────────────────────────────────────────
   const Legend = () => (
     <div className="type-legend">
       {SUBJECT_TYPES.map(type => (
@@ -106,7 +120,7 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
       ))}
       {isAuthenticated && (
         <div className="legend-item legend-drag-hint">
-          ↔ {t('dragHint') || 'Drag to move classes'}
+          â†” {t('dragHint') || 'Drag to move classes'}
         </div>
       )}
     </div>
@@ -121,7 +135,7 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
             <tr>
               <th className="group-header">
                 {t('groupTime')}
-                {!isAuthenticated && <div className="lock-icon">🔒</div>}
+                {!isAuthenticated && <div className="lock-icon">ðŸ”’</div>}
               </th>
               {daysToShow.map(day => {
                 const isToday = day === todayName;
@@ -130,7 +144,7 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
                     className={`day-header ${isToday ? 'today-col' : ''}`}
                     colSpan={timeSlots.length}
                   >
-                    {t(day)}{isToday && <span className="today-badge"> ★</span>}
+                    {t(day)}{isToday && <span className="today-badge"> â˜…</span>}
                   </th>
                 );
               })}
@@ -163,13 +177,20 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
                           if (window.confirm(t('confirmDeleteGroup', { group })))
                             onDeleteGroup(group);
                         }}
-                      >×</button>
+                      >Ã—</button>
                     )}
                   </div>
                 </td>
 
                 {daysToShow.map(day =>
                   timeSlots.map(time => {
+                    const cellKey = `${group}-${day}-${time}`;
+                    
+                    // Skip if this cell is a continuation of a multi-slot class
+                    if (hiddenCells.has(cellKey)) {
+                      return null;
+                    }
+
                     const classData = getClassByKey(group, day, time);
                     const show      = shouldShowCell(classData);
                     const isToday   = day === todayName;
@@ -180,13 +201,14 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
                     const isDragSource = dragSource?.group === group && dragSource?.day === day && dragSource?.time === time;
                     const isDragOver   = dragOver?.group === group && dragOver?.day === day && dragOver?.time === time;
 
-                    // Color coding
                     const typeStyle = classData ? getTypeStyle(classData.subjectType) : null;
+                    const duration = classData?.duration || 1;
 
                     if (!show) {
                       return (
-                        <td key={`${group}-${day}-${time}`}
+                        <td key={cellKey}
                           className={`schedule-cell filtered-out ${isToday ? 'today-cell' : ''}`}
+                          rowSpan={duration}
                         >
                           <div className="filtered-label">{t('filtered')}</div>
                         </td>
@@ -195,7 +217,7 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
 
                     return (
                       <td
-                        key={`${group}-${day}-${time}`}
+                        key={cellKey}
                         className={[
                           'schedule-cell',
                           classData ? 'filled' : '',
@@ -205,56 +227,59 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
                           hasRoomConflict ? 'conflict-room' : '',
                           isDragSource ? 'drag-source' : '',
                           isDragOver ? (classData ? 'drag-over-filled' : 'drag-over-empty') : '',
+                          duration > 1 ? 'multi-slot' : '',
                         ].filter(Boolean).join(' ')}
                         style={classData && typeStyle ? {
                           background: typeStyle.light,
                           borderLeft: `3px solid ${typeStyle.color}`,
                         } : {}}
-                        // Click to edit
+                        rowSpan={duration}
                         onClick={() => {
                           if (isAuthenticated && !dragSource) onEditClass(group, day, time);
                         }}
-                        // Drag source
                         draggable={isAuthenticated && !!classData}
                         onDragStart={classData ? (e) => handleDragStart(e, group, day, time) : undefined}
                         onDragEnd={handleDragEnd}
-                        // Drop target
                         onDragOver={(e) => handleDragOver(e, group, day, time)}
                         onDragLeave={handleDragLeave}
                         onDrop={(e) => handleDrop(e, group, day, time)}
                       >
                         {classData ? (
                           <div className="cell-content">
-                            {/* Type indicator pill */}
                             {typeStyle && (
                               <div className="type-pill" style={{ background: typeStyle.color }}>
                                 {typeStyle.icon} {typeLabels[classData.subjectType || 'lecture']}
                               </div>
                             )}
 
-                            {/* Conflict icons */}
                             {(hasTeacherConflict || hasRoomConflict) && (
                               <div className="cell-conflict-icons">
-                                {hasTeacherConflict && <span title="Teacher conflict">⚠️</span>}
-                                {hasRoomConflict    && <span title="Room conflict">🚪⚠️</span>}
+                                {hasTeacherConflict && <span title="Teacher conflict">âš ï¸</span>}
+                                {hasRoomConflict    && <span title="Room conflict">ðŸšªâš ï¸</span>}
                               </div>
                             )}
 
                             <div className="course-name">{classData.course}</div>
+                            
+                            {duration > 1 && (
+                              <div className="duration-indicator">
+                                â± {duration * 40} {t('min') || 'min'}
+                              </div>
+                            )}
+
                             {classData.teacher && (
                               <div className={`teacher-name ${hasTeacherConflict ? 'conflict-text' : ''}`}>
-                                👨‍🏫 {classData.teacher}
+                                ðŸ‘¨â€ðŸ« {classData.teacher}
                               </div>
                             )}
                             {classData.room && (
                               <div className={`room-number ${hasRoomConflict ? 'conflict-text' : ''}`}>
-                                🚪 {classData.room}
+                                ðŸšª {classData.room}
                               </div>
                             )}
 
-                            {/* Drag handle shown on hover */}
                             {isAuthenticated && (
-                              <div className="drag-handle" title="Drag to move">⠿</div>
+                              <div className="drag-handle" title="Drag to move">â ¿</div>
                             )}
                           </div>
                         ) : (

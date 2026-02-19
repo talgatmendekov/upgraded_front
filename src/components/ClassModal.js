@@ -32,7 +32,7 @@ const ClassModal = ({ isOpen, onClose, group, day, time }) => {
   const getMaxDuration = () => {
     const startIdx = timeSlots.indexOf(time);
     if (startIdx === -1) return 1;
-    return Math.min(3, timeSlots.length - startIdx);
+    return Math.min(4, timeSlots.length - startIdx);
   };
 
   useEffect(() => {
@@ -225,11 +225,13 @@ const ClassModal = ({ isOpen, onClose, group, day, time }) => {
               <option value={1}>1 {t('slot') || 'slot'} (40 {t('min') || 'min'})</option>
               {maxDur >= 2 && <option value={2}>2 {t('slots') || 'slots'} (80 {t('min') || 'min'})</option>}
               {maxDur >= 3 && <option value={3}>3 {t('slots') || 'slots'} (120 {t('min') || 'min'})</option>}
+              {maxDur >= 4 && <option value={4}>4 {t('slots') || 'slots'} (160 {t('min') || 'min'})</option>}
             </select>
             <div className="duration-hint">
               {duration === 1 && (t('oneSlot') || 'Single 40-minute period')}
               {duration === 2 && (t('twoSlots') || 'Two consecutive 40-minute periods')}
               {duration === 3 && (t('threeSlots') || 'Three consecutive 40-minute periods')}
+              {duration === 4 && (t('fourSlots') || 'Four consecutive 40-minute periods')}
             </div>
           </div>
 
@@ -262,7 +264,7 @@ const ClassModal = ({ isOpen, onClose, group, day, time }) => {
             className="btn btn-primary"
             style={conflicts.length === 0 ? { background: activeType?.color } : { background: '#f59e0b' }}
           >
-            {conflicts.length > 0 ? `${t('save')}` : t('save')}
+            {conflicts.length > 0 ? `âš ï¸ ${t('save')}` : t('save')}
           </button>
         </div>
       </div>
