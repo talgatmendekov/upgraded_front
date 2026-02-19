@@ -77,7 +77,7 @@ const Login = ({ onViewAsGuest }) => {
           <button onClick={onViewAsGuest} className="btn-link">
             {t('viewAsGuest')}
           </button>
-          <p className="hint">{t('loginHint')}</p>
+          
         </div>
       </div>
     </div>
