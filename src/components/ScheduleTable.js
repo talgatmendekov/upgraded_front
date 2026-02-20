@@ -1,4 +1,4 @@
-// src/components/ScheduleTable.js
+// src/components/ScheduleTable.js - WITH DEBUG
 import React, { useState, useRef, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSchedule } from '../context/ScheduleContext';
@@ -20,6 +20,9 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
   const { groups, timeSlots, days, schedule, moveClass } = useSchedule();
   const { t, lang } = useLanguage();
 
+  console.log('🔍 ALL TIME SLOTS:', timeSlots);
+  console.log('🔍 Classes with duration > 1:', Object.values(schedule).filter(c => c.duration > 1));
+
   const todayName = getTodayName();
   const daysToShow = selectedDay ? [selectedDay] : days;
   const groupsToShow = selectedGroup ? groups.filter(g => g === selectedGroup) : groups;
@@ -29,22 +32,35 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
   const [dragOver, setDragOver] = useState(null);
   const dragNode = useRef(null);
 
-  // Build global skip map ONCE per schedule change
+  // Build skip map with DEBUG
   const cellsToSkipGlobal = useMemo(() => {
     const skipSet = new Set();
+    console.log('🔧 Building skip map...');
+    
     Object.values(schedule).forEach(classData => {
       if (classData.duration && classData.duration > 1) {
+        console.log(`📌 Class: ${classData.course} at ${classData.time} on ${classData.day}, duration=${classData.duration}`);
+        
         const timeIdx = timeSlots.indexOf(classData.time);
+        console.log(`   timeIdx=${timeIdx} (looking for "${classData.time}" in`, timeSlots, ')');
+        
         if (timeIdx !== -1) {
           for (let i = 1; i < classData.duration; i++) {
-            if (timeIdx + i < timeSlots.length) {
-              const skipKey = `${classData.group}-${classData.day}-${timeSlots[timeIdx + i]}`;
+            const skipIdx = timeIdx + i;
+            if (skipIdx < timeSlots.length) {
+              const skipTime = timeSlots[skipIdx];
+              const skipKey = `${classData.group}-${classData.day}-${skipTime}`;
+              console.log(`   ⏩ Skipping slot ${i}: ${skipTime} (key: ${skipKey})`);
               skipSet.add(skipKey);
             }
           }
+        } else {
+          console.log(`   ❌ TIME NOT FOUND IN SLOTS!`);
         }
       }
     });
+    
+    console.log('✅ Final skip set:', Array.from(skipSet));
     return skipSet;
   }, [schedule, timeSlots]);
 
@@ -115,7 +131,7 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
           <span className="legend-label">{type.icon} {typeLabels[type.value]}</span>
         </div>
       ))}
-      {isAuthenticated && <div className="legend-item legend-drag-hint">↔ {t('dragHint') || 'Drag to move classes'}</div>}
+      {isAuthenticated && <div className="legend-item legend-drag-hint">↔ {t('dragHint')}</div>}
     </div>
   );
 
@@ -147,14 +163,19 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
                   <div className="group-cell-content">
                     <span className="group-name">{group}</span>
                     {isAuthenticated && (
-                      <button className="delete-group-btn" title="Delete group"
-                        onClick={() => { if (window.confirm(t('confirmDeleteGroup', { group }))) onDeleteGroup(group); }}>×</button>
+                      <button className="delete-group-btn" onClick={() => { 
+                        if (window.confirm(t('confirmDeleteGroup', { group }))) onDeleteGroup(group); 
+                      }}>×</button>
                     )}
                   </div>
                 </td>
                 {daysToShow.map(day => timeSlots.map(time => {
                   const cellKey = `${group}-${day}-${time}`;
-                  if (cellsToSkipGlobal.has(cellKey)) return null;
+                  
+                  if (cellsToSkipGlobal.has(cellKey)) {
+                    console.log(`⏭️ SKIPPING CELL: ${cellKey}`);
+                    return null;
+                  }
 
                   const classData = getClass(group, day, time);
                   const show = shouldShowCell(classData);
@@ -194,17 +215,17 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
                             {typeStyle.icon} {typeLabels[classData.subjectType || 'lecture']}</div>}
                           {(conflicts.includes('teacher') || conflicts.includes('room')) && (
                             <div className="cell-conflict-icons">
-                              {conflicts.includes('teacher') && <span title="Teacher conflict">⚠️</span>}
-                              {conflicts.includes('room') && <span title="Room conflict">🚪⚠️</span>}
+                              {conflicts.includes('teacher') && <span>⚠️</span>}
+                              {conflicts.includes('room') && <span>🚪⚠️</span>}
                             </div>
                           )}
                           <div className="course-name">{classData.course}</div>
-                          {duration > 1 && <div className="duration-indicator">⏱ {duration * 40} {t('min') || 'min'}</div>}
+                          {duration > 1 && <div className="duration-indicator">⏱ {duration * 40}min</div>}
                           {classData.teacher && <div className={`teacher-name ${conflicts.includes('teacher') ? 'conflict-text' : ''}`}>
                             👨‍🏫 {classData.teacher}</div>}
                           {classData.room && <div className={`room-number ${conflicts.includes('room') ? 'conflict-text' : ''}`}>
                             🚪 {classData.room}</div>}
-                          {isAuthenticated && <div className="drag-handle" title="Drag to move">⠿</div>}
+                          {isAuthenticated && <div className="drag-handle">⠿</div>}
                         </div>
                       ) : (
                         <>{isAuthenticated && <div className="empty-cell">+</div>}
