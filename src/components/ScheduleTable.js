@@ -1,4 +1,4 @@
-// src/components/ScheduleTable.js - WITH DEBUG
+// src/components/ScheduleTable.js - FIXED with colSpan
 import React, { useState, useRef, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSchedule } from '../context/ScheduleContext';
@@ -20,9 +20,6 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
   const { groups, timeSlots, days, schedule, moveClass } = useSchedule();
   const { t, lang } = useLanguage();
 
-  console.log('🔍 ALL TIME SLOTS:', timeSlots);
-  console.log('🔍 Classes with duration > 1:', Object.values(schedule).filter(c => c.duration > 1));
-
   const todayName = getTodayName();
   const daysToShow = selectedDay ? [selectedDay] : days;
   const groupsToShow = selectedGroup ? groups.filter(g => g === selectedGroup) : groups;
@@ -32,35 +29,26 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
   const [dragOver, setDragOver] = useState(null);
   const dragNode = useRef(null);
 
-  // Build skip map with DEBUG
+  // Build skip map - cells that are continuation of multi-slot classes
   const cellsToSkipGlobal = useMemo(() => {
     const skipSet = new Set();
-    console.log('🔧 Building skip map...');
     
     Object.values(schedule).forEach(classData => {
       if (classData.duration && classData.duration > 1) {
-        console.log(`📌 Class: ${classData.course} at ${classData.time} on ${classData.day}, duration=${classData.duration}`);
-        
         const timeIdx = timeSlots.indexOf(classData.time);
-        console.log(`   timeIdx=${timeIdx} (looking for "${classData.time}" in`, timeSlots, ')');
-        
         if (timeIdx !== -1) {
+          // Skip the NEXT time slots (horizontally)
           for (let i = 1; i < classData.duration; i++) {
-            const skipIdx = timeIdx + i;
-            if (skipIdx < timeSlots.length) {
-              const skipTime = timeSlots[skipIdx];
+            if (timeIdx + i < timeSlots.length) {
+              const skipTime = timeSlots[timeIdx + i];
               const skipKey = `${classData.group}-${classData.day}-${skipTime}`;
-              console.log(`   ⏩ Skipping slot ${i}: ${skipTime} (key: ${skipKey})`);
               skipSet.add(skipKey);
             }
           }
-        } else {
-          console.log(`   ❌ TIME NOT FOUND IN SLOTS!`);
         }
       }
     });
     
-    console.log('✅ Final skip set:', Array.from(skipSet));
     return skipSet;
   }, [schedule, timeSlots]);
 
@@ -172,8 +160,8 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
                 {daysToShow.map(day => timeSlots.map(time => {
                   const cellKey = `${group}-${day}-${time}`;
                   
+                  // Skip continuation cells
                   if (cellsToSkipGlobal.has(cellKey)) {
-                    console.log(`⏭️ SKIPPING CELL: ${cellKey}`);
                     return null;
                   }
 
@@ -187,7 +175,7 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
                   const duration = classData?.duration ? parseInt(classData.duration) : 1;
 
                   if (!show) {
-                    return <td key={cellKey} className={`schedule-cell filtered-out ${isToday ? 'today-cell' : ''}`} rowSpan={duration}>
+                    return <td key={cellKey} className={`schedule-cell filtered-out ${isToday ? 'today-cell' : ''}`} colSpan={duration}>
                       <div className="filtered-label">{t('filtered')}</div>
                     </td>;
                   }
@@ -200,7 +188,7 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
                         isDragOver ? (classData ? 'drag-over-filled' : 'drag-over-empty') : '',
                         duration > 1 ? 'multi-slot' : ''].filter(Boolean).join(' ')}
                       style={classData && typeStyle ? { background: typeStyle.light, borderLeft: `3px solid ${typeStyle.color}` } : {}}
-                      rowSpan={duration}
+                      colSpan={duration}
                       onClick={() => { if (isAuthenticated && !dragSource) onEditClass(group, day, time); }}
                       draggable={isAuthenticated && !!classData}
                       onDragStart={classData ? (e) => handleDragStart(e, group, day, time) : undefined}
