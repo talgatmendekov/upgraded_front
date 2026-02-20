@@ -1,54 +1,246 @@
-/* src/index.css */
-
-
-/* Add this to index.css - PASTEL LIGHT & DARK THEMES */
+/* Add this to src/index.css - COMPLETELY DIFFERENT DAY/NIGHT PALETTES */
 
 :root {
-  /* Light Mode - Soft Pastels (Brighter) */
-  --bg-main: #fef5ff;
-  --bg-secondary: #ffffff;
-  --bg-tertiary: #f8f0ff;
-  --text-primary: #2d1b3d;
-  --text-secondary: #6b4c80;
-  --primary: #a78bfa;
-  --primary-light: #e9d5ff;
-  --border: #ddd6fe;
-  --hover-bg: #f3e8ff;
-  --success: #86efac;
-  --warning: #fcd34d;
-  --error: #fca5a5;
-  --shadow: rgba(139, 92, 246, 0.1);
+  /* ============================================
+     LIGHT MODE - Soft Peach & Mint Pastels
+     ============================================ */
+  --bg-main: #fff8f0;              /* Warm cream */
+  --bg-secondary: #ffffff;         /* Pure white */
+  --bg-tertiary: #fff3e6;          /* Light peach */
+  --text-primary: #2d1810;         /* Deep brown */
+  --text-secondary: #8b6442;       /* Warm brown */
+  --primary: #ff9b71;              /* Coral orange */
+  --primary-light: #ffe4d6;        /* Light peach */
+  --border: #ffd6ba;               /* Peach border */
+  --hover-bg: #fff0e0;             /* Soft peach hover */
+  --success: #a7e6c4;              /* Mint green */
+  --warning: #ffc857;              /* Golden yellow */
+  --error: #ff8585;                /* Soft red */
+  --shadow: rgba(255, 155, 113, 0.15);
+  
+  /* Subject type colors - WARM palette */
+  --lecture-color: #ff8b5a;        /* Warm orange */
+  --lecture-light: #ffe8dc;
+  --lab-color: #4ecdc4;            /* Turquoise */
+  --lab-light: #d5f4f1;
+  --seminar-color: #ffbe0b;        /* Bright yellow */
+  --seminar-light: #fff4d1;
+  --other-color: #a78bfa;          /* Lavender */
+  --other-light: #ede9fe;
 }
 
 body[data-theme="dark"] {
-  /* Dark Mode - Deep Pastels */
-  --bg-main: #1a0f2e;
-  --bg-secondary: #261841;
-  --bg-tertiary: #2d1b4a;
-  --text-primary: #f3e8ff;
-  --text-secondary: #d8b4fe;
-  --primary: #c4b5fd;
-  --primary-light: #4c1d95;
-  --border: #4c1d95;
-  --hover-bg: #3b1f66;
-  --success: #6ee7b7;
-  --warning: #fbbf24;
-  --error: #f87171;
-  --shadow: rgba(196, 181, 253, 0.15);
+  /* ============================================
+     DARK MODE - Deep Blue & Purple Galaxy
+     ============================================ */
+  --bg-main: #0f1419;              /* Deep space blue */
+  --bg-secondary: #1a1f2e;         /* Navy blue */
+  --bg-tertiary: #252b3b;          /* Slate blue */
+  --text-primary: #e6e8f0;         /* Soft white */
+  --text-secondary: #a8b2d1;       /* Periwinkle */
+  --primary: #7c3aed;              /* Bright purple */
+  --primary-light: #3b1f66;        /* Dark purple */
+  --border: #3d4663;               /* Steel blue */
+  --hover-bg: #2a3147;             /* Dark slate hover */
+  --success: #34d399;              /* Bright mint */
+  --warning: #fbbf24;              /* Amber */
+  --error: #f87171;                /* Coral red */
+  --shadow: rgba(124, 58, 237, 0.25);
+  
+  /* Subject type colors - COOL palette */
+  --lecture-color: #818cf8;        /* Bright indigo */
+  --lecture-light: #312e81;
+  --lab-color: #2dd4bf;            /* Bright cyan */
+  --lab-light: #134e4a;
+  --seminar-color: #fbbf24;        /* Bright amber */
+  --seminar-light: #78350f;
+  --other-color: #c084fc;          /* Bright purple */
+  --other-light: #581c87;
 }
 
-/* Smooth theme transition */
-body,
-.header,
-.schedule-table,
-.schedule-cell,
-.modal-overlay,
-.modal-content,
-button,
-input,
-select {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+/* Update ALL components to use CSS variables */
+
+/* Background colors */
+body {
+  background: var(--bg-main);
+  color: var(--text-primary);
 }
+
+.header {
+  background: var(--bg-secondary);
+  border-bottom: 2px solid var(--border);
+}
+
+.schedule-container {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+}
+
+/* Table styling */
+.schedule-table {
+  background: var(--bg-secondary);
+  border-color: var(--border);
+}
+
+.schedule-table th {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.schedule-table td {
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+.schedule-cell {
+  background: var(--bg-secondary);
+}
+
+.schedule-cell.filled {
+  background: var(--bg-tertiary);
+}
+
+.schedule-cell:hover {
+  background: var(--hover-bg);
+}
+
+/* Modal */
+.modal-overlay {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 60px var(--shadow);
+}
+
+.modal-header {
+  border-bottom-color: var(--primary);
+}
+
+/* Form inputs */
+input, select, textarea {
+  background: var(--bg-main);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary);
+  background: var(--bg-secondary);
+}
+
+/* Buttons */
+.btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+/* Subject type pills - use CSS variables */
+.type-pill.lecture {
+  background: var(--lecture-color) !important;
+}
+
+.schedule-cell.lecture {
+  background: var(--lecture-light) !important;
+  border-left-color: var(--lecture-color) !important;
+}
+
+.type-pill.lab {
+  background: var(--lab-color) !important;
+}
+
+.schedule-cell.lab {
+  background: var(--lab-light) !important;
+  border-left-color: var(--lab-color) !important;
+}
+
+.type-pill.seminar {
+  background: var(--seminar-color) !important;
+}
+
+.schedule-cell.seminar {
+  background: var(--seminar-light) !important;
+  border-left-color: var(--seminar-color) !important;
+}
+
+.type-pill.other {
+  background: var(--other-color) !important;
+}
+
+.schedule-cell.other {
+  background: var(--other-light) !important;
+  border-left-color: var(--other-color) !important;
+}
+
+/* Conflicts */
+.conflict-teacher {
+  border: 2px dashed var(--warning) !important;
+}
+
+.conflict-room {
+  border: 2px dashed var(--error) !important;
+}
+
+/* Success/Warning/Error states */
+.success {
+  color: var(--success);
+}
+
+.warning {
+  color: var(--warning);
+}
+
+.error {
+  color: var(--error);
+}
+
+/* Smooth transitions */
+* {
+  transition: background-color 0.3s ease, 
+              color 0.3s ease, 
+              border-color 0.3s ease,
+              box-shadow 0.3s ease;
+}
+
+/* Today column highlight */
+.today-col {
+  background: var(--primary-light) !important;
+}
+
+.today-cell {
+  background: var(--hover-bg) !important;
+}
+
+/* Print view - force light colors */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  * {
+    background: white !important;
+    color: black !important;
+    border-color: #ddd !important;
+  }
+}
+
+
+
 
 body {
   margin: 0;
