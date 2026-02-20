@@ -137,10 +137,10 @@ const AppContent = () => {
   }
 
   const tabs = [
-    { id: 'schedule',  icon: 'ðŸ“…', label: t('tabSchedule')  || 'Schedule' },
-    { id: 'print',     icon: 'ðŸ–¨ï¸', label: t('tabPrint')     || 'Print / PDF' },
-    { id: 'dashboard', icon: 'ðŸ“Š', label: t('tabDashboard') || 'Teacher Stats' },
-    { id: 'conflicts', icon: 'ðŸ””', label: t('tabConflicts') || 'Conflicts', badge: conflictCount },
+    { id: 'schedule',  icon: '📅', label: t('tabSchedule')  || 'Schedule' },
+    { id: 'print',     icon: '🖨️', label: t('tabPrint')     || 'Print / PDF' },
+    { id: 'dashboard', icon: '📊', label: t('tabDashboard') || 'Teacher Stats' },
+    { id: 'conflicts', icon: '⚠️', label: t('tabConflicts') || 'Conflicts', badge: conflictCount },
   ];
 
   return (
