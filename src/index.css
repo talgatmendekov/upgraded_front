@@ -556,7 +556,33 @@ button.primary {
 
 
 
-body {
+/* FIX 1: Group cells visibility in light mode */
+.group-cell {
+  background: var(--bg-tertiary) !important;
+  font-weight: 700;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-strong) !important;
+}
+
+.group-name {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+}
+
+/* Make sure group cells are visible in light mode */
+body:not([data-theme="dark"]) .group-cell {
+  background: #f4f6f8 !important; /* Light gray */
+  color: #1a2332 !important; /* Dark text */
+}
+
+body[data-theme="dark"] .group-cell {
+  background: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+}
+
+
+
+/* body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
@@ -572,4 +598,4 @@ code {
 
 * {
   box-sizing: border-box;
-}
+} */

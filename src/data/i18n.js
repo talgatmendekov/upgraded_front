@@ -3,7 +3,7 @@
 
 export const translations = {
   en: {
-    appTitle: 'University Schedule Builder',
+    appTitle: 'International Ala-Too University',
     appSubtitle: 'Timetable Management System',
     guestMode: 'Guest Mode (View Only)',
     logout: 'Logout',
@@ -111,7 +111,7 @@ export const translations = {
   },
 
   ru: {
-    appTitle: 'Расписание',
+    appTitle: 'Международный университет Ала-Тоо',
     appSubtitle: 'Система управления',
     guestMode: 'Гостевой режим',
     logout: 'Выйти',
@@ -219,7 +219,7 @@ export const translations = {
   },
 
   ky: {
-    appTitle: 'Расписание',
+    appTitle: 'Эл аралык Ала-Тоо университети',
     appSubtitle: 'Система',
     guestMode: 'Конок',
     logout: 'Чыгуу',
