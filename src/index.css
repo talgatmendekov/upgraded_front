@@ -654,3 +654,416 @@ code {
   width: 100%;
   position: relative;
 }
+
+
+/* ============================================
+   MOBILE-FIRST RESPONSIVE DESIGN
+   All base styles are for mobile, then scale up
+   ============================================ */
+
+/* Mobile Base (320px+) */
+body {
+  font-size: 14px;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Header - Mobile Stacked */
+.header {
+  flex-direction: column;
+  padding: 12px;
+  gap: 12px;
+}
+
+.header-title h1 {
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+.header-title .subtitle {
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.header-right {
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.lang-selector {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.lang-btn,
+.theme-toggle {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+
+/* Filters - Mobile Stacked */
+.filters {
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+.filter-group {
+  width: 100%;
+}
+
+.filter-group select {
+  width: 100%;
+  font-size: 0.9rem;
+  padding: 10px;
+}
+
+/* Tabs - Mobile Scrollable */
+.tabs {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.tabs button {
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+/* Table - Mobile Optimized */
+.schedule-container {
+  margin: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.schedule-table {
+  font-size: 0.75rem;
+  min-width: 100%;
+}
+
+.schedule-table th,
+.schedule-table td {
+  padding: 8px 6px;
+  min-width: 80px;
+}
+
+.group-cell {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  min-width: 100px !important;
+  background: var(--bg-tertiary) !important;
+  box-shadow: 2px 0 4px var(--shadow);
+}
+
+.time-header {
+  font-size: 0.7rem;
+  writing-mode: horizontal-tb;
+}
+
+.cell-content {
+  font-size: 0.7rem;
+  line-height: 1.3;
+}
+
+.course-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.teacher-name,
+.room-number {
+  font-size: 0.65rem;
+}
+
+.type-pill {
+  font-size: 0.6rem;
+  padding: 2px 6px;
+}
+
+.duration-indicator {
+  font-size: 0.6rem;
+  padding: 2px 6px;
+}
+
+/* Modal - Mobile Full Screen */
+.modal-content {
+  width: 95vw;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  margin: 20px;
+  border-radius: 8px;
+}
+
+.modal-header,
+.modal-body,
+.modal-footer {
+  padding: 16px;
+}
+
+.modal-header h2 {
+  font-size: 1.2rem;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  font-size: 16px; /* Prevents iOS zoom */
+  padding: 12px;
+}
+
+/* Login - Mobile Optimized */
+.login-container {
+  padding: 16px !important;
+  width: 100vw !important;
+}
+
+.login-box {
+  padding: 24px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.login-header h1 {
+  font-size: 1.5rem;
+}
+
+/* Buttons - Mobile Touch Friendly */
+button {
+  min-height: 44px; /* iOS minimum touch target */
+  padding: 12px 16px;
+  font-size: 0.9rem;
+}
+
+.btn-primary {
+  width: 100%;
+}
+
+/* Admin Actions - Mobile Stacked */
+.admin-actions {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-actions button {
+  width: 100%;
+}
+
+/* Cards - Mobile Optimized */
+.card,
+.stat-card {
+  padding: 16px;
+  margin: 12px;
+}
+
+/* Legend - Mobile Compact */
+.type-legend {
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+/* Feedback Button - Mobile */
+.feedback-button {
+  width: 100%;
+  justify-content: center;
+}
+
+/* ============================================
+   TABLET (768px+)
+   ============================================ */
+@media (min-width: 768px) {
+  body {
+    font-size: 15px;
+  }
+
+  .header {
+    flex-direction: row;
+    padding: 16px 24px;
+  }
+
+  .header-title h1 {
+    font-size: 1.75rem;
+    text-align: left;
+  }
+
+  .header-right {
+    flex-direction: row;
+    width: auto;
+  }
+
+  .filters {
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 16px;
+  }
+
+  .filter-group {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .schedule-table {
+    font-size: 0.85rem;
+  }
+
+  .schedule-table th,
+  .schedule-table td {
+    padding: 10px 8px;
+  }
+
+  .modal-content {
+    width: 80vw;
+    max-width: 600px;
+  }
+
+  .admin-actions {
+    flex-direction: row;
+  }
+
+  .admin-actions button {
+    width: auto;
+  }
+
+  .btn-primary {
+    width: auto;
+  }
+
+  .type-legend {
+    flex-direction: row;
+  }
+
+  .feedback-button {
+    width: auto;
+  }
+}
+
+/* ============================================
+   DESKTOP (1024px+)
+   ============================================ */
+@media (min-width: 1024px) {
+  body {
+    font-size: 16px;
+  }
+
+  .header-title h1 {
+    font-size: 2rem;
+  }
+
+  .schedule-container {
+    margin: 20px;
+  }
+
+  .schedule-table {
+    font-size: 0.95rem;
+  }
+
+  .schedule-table th,
+  .schedule-table td {
+    padding: 12px;
+  }
+
+  .course-name {
+    font-size: 0.9rem;
+  }
+
+  .teacher-name,
+  .room-number {
+    font-size: 0.8rem;
+  }
+
+  .modal-body {
+    padding: 24px;
+  }
+
+  .card,
+  .stat-card {
+    padding: 24px;
+    margin: 20px;
+  }
+}
+
+/* ============================================
+   TOUCH OPTIMIZATIONS
+   ============================================ */
+@media (hover: none) and (pointer: coarse) {
+  /* Mobile touch devices */
+  
+  button,
+  select,
+  input {
+    min-height: 44px;
+  }
+
+  .schedule-cell {
+    min-height: 60px;
+  }
+
+  /* Larger tap targets */
+  .lang-btn,
+  .theme-toggle {
+    min-width: 48px;
+    min-height: 48px;
+  }
+
+  /* No hover effects on touch */
+  .schedule-cell:hover {
+    background: var(--bg-secondary) !important;
+  }
+}
+
+/* ============================================
+   LANDSCAPE MOBILE
+   ============================================ */
+@media (max-height: 500px) and (orientation: landscape) {
+  .header {
+    padding: 8px 16px;
+  }
+
+  .modal-content {
+    max-height: 85vh;
+  }
+
+  .login-box {
+    padding: 16px;
+  }
+}
+
+/* ============================================
+   PRINT OPTIMIZATIONS
+   ============================================ */
+@media print {
+  .header,
+  .filters,
+  .tabs,
+  .admin-actions,
+  .feedback-button,
+  .theme-toggle,
+  .lang-selector {
+    display: none !important;
+  }
+
+  .schedule-table {
+    font-size: 10pt;
+  }
+
+  .schedule-table th,
+  .schedule-table td {
+    padding: 4px;
+  }
+}
