@@ -108,6 +108,8 @@ export const translations = {
     cannotSaveOccupied: 'Slots occupied',
     lightMode: 'Light',
     darkMode: 'Dark',
+    feedback: 'Suggestions',
+    feedbackTitle: 'Help us improve the timetable app',
   },
 
   ru: {
@@ -216,6 +218,9 @@ export const translations = {
     cannotSaveOccupied: 'Слоты заняты',
     lightMode: 'Светлая',
     darkMode: 'Тёмная',
+    feedback: 'Предложения',
+    feedbackTitle: 'Помогите улучшить это приложение',
+
   },
 
   ky: {
@@ -324,6 +329,8 @@ export const translations = {
     cannotSaveOccupied: 'Ээленген',
     lightMode: 'Жарык',
     darkMode: 'Караңгы',
+    feedback: 'Сунуштар',
+    feedbackTitle: 'Тирекемени жакшыртууга жардам бериңиз',
   }
 };
 

@@ -56,7 +56,7 @@ body[data-theme="dark"] {
   --bg-tertiary: #242b3d;          /* Lighter slate */
   --bg-card: #1e2433;              /* Card background */
   
-  --text-primary: #e6e9ef;         /* Soft white (easier on eyes) */
+  --text-primary: #020203;         /* Soft white (easier on eyes) */
   --text-secondary: #b4b9c5;       /* Medium gray */
   --text-muted: #8891a8;           /* Muted gray */
   
@@ -608,7 +608,7 @@ body[data-theme="dark"] .group-name {
 }
 
 
-/* body {
+body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
@@ -624,4 +624,4 @@ code {
 
 * {
   box-sizing: border-box;
-} */
+}

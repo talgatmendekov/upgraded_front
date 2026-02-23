@@ -4,6 +4,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { LANGUAGE_OPTIONS } from '../data/i18n';
 import logo from '../assets/logo.png';
 import ThemeToggle from './ThemeToggle';
+import FeedbackButton from './FeedbackButton';
 import './Header.css';
 
 // Get today's day name in English
@@ -36,18 +37,18 @@ const Header = ({
   return (
     <div className="header">
       <div className="header-top">
-        
+
         <div className="header-title">
           <div>
-             <img src={logo} alt="University Logo" className="logo" />
-              <h1>{t('appTitle')}</h1>
-             
+            <img src={logo} alt="University Logo" className="logo" />
+            <h1>{t('appTitle')}</h1>
+
           </div>
-        <p className="subtitle">{t('appSubtitle')}</p>
+          <p className="subtitle">{t('appSubtitle')}</p>
         </div>
 
         <div className="header-right">
-           <ThemeToggle />
+          <ThemeToggle />
           {/* Language Selector */}
           <div className="lang-selector">
             {LANGUAGE_OPTIONS.map(opt => (
@@ -141,6 +142,7 @@ const Header = ({
             </select>
           </div>
         </div>
+          <FeedbackButton />
 
         {isAuthenticated && (
           <div className="admin-actions">

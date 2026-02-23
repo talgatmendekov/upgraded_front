@@ -1,0 +1,40 @@
+/* src/components/FeedbackButton.css */
+.feedback-button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px var(--shadow);
+}
+
+.feedback-button:hover {
+  background: var(--accent-light);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px var(--shadow-md);
+}
+
+.feedback-button:active {
+  transform: translateY(0);
+}
+
+/* Pulsing animation to attract attention */
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 2px 4px var(--shadow);
+  }
+  50% {
+    box-shadow: 0 4px 12px var(--shadow-md);
+  }
+}
+
+.feedback-button {
+  animation: pulse 2s ease-in-out infinite;
+}
