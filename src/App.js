@@ -13,7 +13,8 @@ import TeacherDashboard from './components/TeacherDashboard';
 import ConflictPage from './components/ConflictPage';
 import { exportToExcel, importFromExcel } from './utils/excelUtils';
 import GuestBooking from './components/GuestBooking';
- import { parseAlatooSchedule } from './utils/alatooimport';
+import { parseAlatooSchedule } from './utils/alatooimport';
+import * as scheduleAPI from './api/scheduleAPI'; // ⚠️ ADD THIS IMPORT!
 import './App.css';
 
 const getTodayScheduleDay = () => {
@@ -38,10 +39,7 @@ const AppContent = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [currentCell, setCurrentCell] = useState({ group: null, day: null, time: null });
   const [importing, setImporting] = useState(false);
-
-   const [showBooking, setShowBooking] = useState(false);
-
-   
+  const [showBooking, setShowBooking] = useState(false);
 
   // Count all conflicts for badge
   const conflictCount = React.useMemo(() => {
@@ -100,56 +98,50 @@ const AppContent = () => {
     } catch (err) { alert(`Export failed: ${err.message}`); }
   };
 
+  // ✅ FIXED: Added null check for e.target.files
   const handleImport = async (e) => {
-     const file = e.target.files[0];
-     if (!file) return;
-     
-     try {
-       const schedule = await parseAlatooSchedule(file);
-       
-       // Import to backend
-       for (const entry of schedule) {
-         await scheduleAPI.save(
-           entry.group,
-           entry.day,
-           entry.time,
-           entry.course,
-           entry.teacher,
-           entry.room,
-           entry.subjectType,
-           entry.duration
-         );
-       }
-       
-       alert(`✅ Successfully imported ${schedule.length} classes!`);
-       window.location.reload();
-     } catch (error) {
-       alert(`❌ Import failed: ${error.message}`);
-     }
-   };
-  // const handleImport = () => {
-  //   const input = document.createElement('input');
-  //   input.type = 'file'; input.accept = '.xlsx,.xls';
-  //   input.onchange = async (e) => {
-  //     const file = e.target.files[0]; if (!file) return;
-  //     setImporting(true);
-  //     try {
-  //       const result = await importFromExcel(file);
-  //       if (result.success) {
-  //         const res = await importSchedule(JSON.stringify({
-  //           groups: result.groups, schedule: result.schedule
-  //         }));
-  //         if (res.success) {
-  //           alert(`${t('importSuccess')} ${result.groups.length} groups, ${Object.keys(result.schedule).length} classes.`);
-  //         } else {
-  //           alert(`${t('importFailed')} ${res.error}`);
-  //         }
-  //       } else { alert(`${t('importFailed')} ${result.error}`); }
-  //     } catch (err) { alert(`${t('importFailed')} ${err.message}`); }
-  //     finally { setImporting(false); }
-  //   };
-  //   input.click();
-  // };
+    // Add safety check
+    if (!e || !e.target || !e.target.files) {
+      console.error('No file selected or event is invalid');
+      return;
+    }
+    
+    const file = e.target.files[0];
+    if (!file) {
+      console.error('No file selected');
+      return;
+    }
+    
+    setImporting(true);
+    
+    try {
+      const schedule = await parseAlatooSchedule(file);
+      
+      // Import to backend
+      for (const entry of schedule) {
+        await scheduleAPI.save(
+          entry.group,
+          entry.day,
+          entry.time,
+          entry.course,
+          entry.teacher,
+          entry.room,
+          entry.subjectType,
+          entry.duration
+        );
+      }
+      
+      alert(`✅ Successfully imported ${schedule.length} classes!`);
+      window.location.reload();
+    } catch (error) {
+      console.error('Import error:', error);
+      alert(`❌ Import failed: ${error.message}`);
+    } finally {
+      setImporting(false);
+      // Reset file input
+      e.target.value = '';
+    }
+  };
 
   const handleClearAll = () => {
     if (window.confirm(t('confirmClearAll'))) clearSchedule();
@@ -159,7 +151,7 @@ const AppContent = () => {
   if (authLoading) {
     return (
       <div className="app-loading">
-        <div className="app-loading-spinner">â³</div>
+        <div className="app-loading-spinner">⏳</div>
         <p>Loading...</p>
       </div>
     );
@@ -181,14 +173,14 @@ const AppContent = () => {
       {(importing || scheduleLoading) && (
         <div className="import-overlay">
           <div className="import-spinner">
-            â³ {scheduleLoading ? (t('loadingData') || 'Loading dataâ€¦') : (t('importing') || 'Importingâ€¦')}
+            ⏳ {scheduleLoading ? (t('loadingData') || 'Loading data…') : (t('importing') || 'Importing…')}
           </div>
         </div>
       )}
 
       {error && (
         <div className="error-banner">
-          âš ï¸ Could not connect to server: {error}.
+          ⚠️ Could not connect to server: {error}.
           <button onClick={() => window.location.reload()}>Retry</button>
         </div>
       )}
@@ -202,14 +194,16 @@ const AppContent = () => {
         onImport={handleImport}
         onClearAll={handleClearAll}
       />
-       {!isAuthenticated && (
-     <>
-       <button onClick={() => setShowBooking(true)} className="btn btn-primary">
-         🏫 {t('bookLab') || 'Book a Lab'}
-       </button>
-       <GuestBooking isOpen={showBooking} onClose={() => setShowBooking(false)} />
-     </>
-   )}
+      
+      {!isAuthenticated && (
+        <>
+          <button onClick={() => setShowBooking(true)} className="btn btn-primary">
+            🏫 {t('bookLab') || 'Book a Lab'}
+          </button>
+          <GuestBooking isOpen={showBooking} onClose={() => setShowBooking(false)} />
+        </>
+      )}
+      
       {/* Tab Bar */}
       <div className="tab-bar">
         {tabs.map(tab => (
