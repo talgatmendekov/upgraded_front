@@ -13,6 +13,7 @@ import TeacherDashboard from './components/TeacherDashboard';
 import ConflictPage from './components/ConflictPage';
 import { exportToExcel, importFromExcel } from './utils/excelUtils';
 import GuestBooking from './components/GuestBooking';
+ import { parseAlatooSchedule } from './utils/alatooimport';
 import './App.css';
 
 const getTodayScheduleDay = () => {
@@ -39,6 +40,8 @@ const AppContent = () => {
   const [importing, setImporting] = useState(false);
 
    const [showBooking, setShowBooking] = useState(false);
+
+   
 
   // Count all conflicts for badge
   const conflictCount = React.useMemo(() => {
@@ -97,29 +100,56 @@ const AppContent = () => {
     } catch (err) { alert(`Export failed: ${err.message}`); }
   };
 
-  const handleImport = () => {
-    const input = document.createElement('input');
-    input.type = 'file'; input.accept = '.xlsx,.xls';
-    input.onchange = async (e) => {
-      const file = e.target.files[0]; if (!file) return;
-      setImporting(true);
-      try {
-        const result = await importFromExcel(file);
-        if (result.success) {
-          const res = await importSchedule(JSON.stringify({
-            groups: result.groups, schedule: result.schedule
-          }));
-          if (res.success) {
-            alert(`${t('importSuccess')} ${result.groups.length} groups, ${Object.keys(result.schedule).length} classes.`);
-          } else {
-            alert(`${t('importFailed')} ${res.error}`);
-          }
-        } else { alert(`${t('importFailed')} ${result.error}`); }
-      } catch (err) { alert(`${t('importFailed')} ${err.message}`); }
-      finally { setImporting(false); }
-    };
-    input.click();
-  };
+  const handleImport = async (e) => {
+     const file = e.target.files[0];
+     if (!file) return;
+     
+     try {
+       const schedule = await parseAlatooSchedule(file);
+       
+       // Import to backend
+       for (const entry of schedule) {
+         await scheduleAPI.save(
+           entry.group,
+           entry.day,
+           entry.time,
+           entry.course,
+           entry.teacher,
+           entry.room,
+           entry.subjectType,
+           entry.duration
+         );
+       }
+       
+       alert(`✅ Successfully imported ${schedule.length} classes!`);
+       window.location.reload();
+     } catch (error) {
+       alert(`❌ Import failed: ${error.message}`);
+     }
+   };
+  // const handleImport = () => {
+  //   const input = document.createElement('input');
+  //   input.type = 'file'; input.accept = '.xlsx,.xls';
+  //   input.onchange = async (e) => {
+  //     const file = e.target.files[0]; if (!file) return;
+  //     setImporting(true);
+  //     try {
+  //       const result = await importFromExcel(file);
+  //       if (result.success) {
+  //         const res = await importSchedule(JSON.stringify({
+  //           groups: result.groups, schedule: result.schedule
+  //         }));
+  //         if (res.success) {
+  //           alert(`${t('importSuccess')} ${result.groups.length} groups, ${Object.keys(result.schedule).length} classes.`);
+  //         } else {
+  //           alert(`${t('importFailed')} ${res.error}`);
+  //         }
+  //       } else { alert(`${t('importFailed')} ${result.error}`); }
+  //     } catch (err) { alert(`${t('importFailed')} ${err.message}`); }
+  //     finally { setImporting(false); }
+  //   };
+  //   input.click();
+  // };
 
   const handleClearAll = () => {
     if (window.confirm(t('confirmClearAll'))) clearSchedule();
