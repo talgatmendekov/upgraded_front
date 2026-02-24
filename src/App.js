@@ -1,6 +1,6 @@
 // src/App.js
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ScheduleProvider, useSchedule } from './context/ScheduleContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
@@ -39,6 +39,9 @@ const AppContent = () => {
   const [currentCell, setCurrentCell] = useState({ group: null, day: null, time: null });
   const [importing, setImporting] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
+  
+  // Create a ref for the hidden file input
+  const fileInputRef = useRef(null);
 
   // Count all conflicts for badge
   const conflictCount = React.useMemo(() => {
@@ -97,10 +100,25 @@ const AppContent = () => {
     } catch (err) { alert(`Export failed: ${err.message}`); }
   };
 
-  // FIXED: Using importSchedule from context instead of scheduleAPI
-  const handleImport = async (e) => {
+  // This function triggers the file input
+  const handleImportClick = () => {
+    // Trigger click on hidden file input
+    fileInputRef.current?.click();
+  };
+
+  // This function handles the actual file selection
+  const handleFileChange = async (e) => {
+    // Safety check
+    if (!e || !e.target || !e.target.files) {
+      console.error('No file selected or event is invalid');
+      return;
+    }
+    
     const file = e.target.files[0];
-    if (!file) return;
+    if (!file) {
+      console.error('No file selected');
+      return;
+    }
     
     setImporting(true);
     
@@ -108,7 +126,7 @@ const AppContent = () => {
       // Parse the Excel file
       const parsedSchedule = await parseAlatooSchedule(file);
       
-      // Use importSchedule from context (already available from useSchedule)
+      // Use importSchedule from context
       const result = await importSchedule(JSON.stringify(parsedSchedule));
       
       if (result && result.success) {
@@ -121,8 +139,10 @@ const AppContent = () => {
       alert(`❌ Import failed: ${error.message}`);
     } finally {
       setImporting(false);
-      // Reset file input
-      e.target.value = '';
+      // Reset file input so the same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -153,6 +173,15 @@ const AppContent = () => {
 
   return (
     <div className="app">
+      {/* Hidden file input for imports */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".xlsx,.xls"
+        onChange={handleFileChange}
+        style={{ display: 'none' }}
+      />
+      
       {(importing || scheduleLoading) && (
         <div className="import-overlay">
           <div className="import-spinner">
@@ -174,7 +203,7 @@ const AppContent = () => {
         selectedGroup={selectedGroup} setSelectedGroup={setSelectedGroup}
         onAddGroup={handleAddGroup}
         onExport={handleExport}
-        onImport={handleImport}
+        onImport={handleImportClick}  // Pass the click handler, not the file change handler
         onClearAll={handleClearAll}
       />
       
