@@ -14,6 +14,7 @@ import ConflictPage from './components/ConflictPage';
 import { exportToExcel, importFromExcel } from './utils/excelUtils';
 import GuestBooking from './components/GuestBooking';
 import { parseAlatooSchedule } from './utils/alatooimport';
+import * as XLSX from 'xlsx'; // Add this import for debugging
 import './App.css';
 
 const getTodayScheduleDay = () => {
@@ -106,6 +107,33 @@ const AppContent = () => {
     fileInputRef.current?.click();
   };
 
+  // Debug function to inspect Excel file structure
+  const debugExcelFile = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          
+          console.log('📊 Excel file structure:');
+          console.log('Sheet names:', workbook.SheetNames);
+          
+          // Show first sheet data
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+          console.log('First 5 rows:', jsonData.slice(0, 5));
+          
+          resolve(workbook);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
   // This function handles the actual file selection
   const handleFileChange = async (e) => {
     // Safety check
@@ -120,19 +148,55 @@ const AppContent = () => {
       return;
     }
     
+    console.log('📁 Selected file:', file.name);
     setImporting(true);
     
     try {
-      // Parse the Excel file
-      const parsedSchedule = await parseAlatooSchedule(file);
+      // Try both import methods
       
-      // Use importSchedule from context
-      const result = await importSchedule(JSON.stringify(parsedSchedule));
-      
-      if (result && result.success) {
-        alert(`✅ Successfully imported ${parsedSchedule.length} classes!`);
-      } else {
-        alert(`❌ Import failed: ${result?.error || 'Unknown error'}`);
+      // Method 1: Try alatoo import first
+      try {
+        console.log('Attempting to parse as Alatoo format...');
+        const parsedSchedule = await parseAlatooSchedule(file);
+        
+        if (parsedSchedule && parsedSchedule.length > 0) {
+          console.log(`✅ Parsed ${parsedSchedule.length} classes from Alatoo format`);
+          
+          // Use importSchedule from context
+          const result = await importSchedule(JSON.stringify(parsedSchedule));
+          
+          if (result && result.success) {
+            alert(`✅ Successfully imported ${parsedSchedule.length} classes!`);
+          } else {
+            alert(`❌ Import failed: ${result?.error || 'Unknown error'}`);
+          }
+        } else {
+          throw new Error('No classes found in file');
+        }
+      } catch (alatooError) {
+        console.log('Alatoo parser failed:', alatooError.message);
+        console.log('Trying generic Excel import...');
+        
+        // Method 2: Try generic import
+        const result = await importFromExcel(file);
+        
+        if (result.success) {
+          const res = await importSchedule(JSON.stringify({
+            groups: result.groups,
+            schedule: result.schedule
+          }));
+          
+          if (res.success) {
+            alert(`✅ Successfully imported ${result.groups.length} groups, ${Object.keys(result.schedule).length} classes.`);
+          } else {
+            alert(`❌ Import failed: ${res.error}`);
+          }
+        } else {
+          // If both methods fail, show debug info
+          console.error('Both import methods failed');
+          await debugExcelFile(file);
+          alert(`❌ Invalid file format. Please check the console for file structure.`);
+        }
       }
     } catch (error) {
       console.error('Import error:', error);
@@ -203,7 +267,7 @@ const AppContent = () => {
         selectedGroup={selectedGroup} setSelectedGroup={setSelectedGroup}
         onAddGroup={handleAddGroup}
         onExport={handleExport}
-        onImport={handleImportClick}  // Pass the click handler, not the file change handler
+        onImport={handleImportClick}
         onClearAll={handleClearAll}
       />
       
