@@ -16,6 +16,7 @@ import GuestBooking from './components/GuestBooking';
 import { parseAlatooSchedule } from './utils/alatooimport';
 import BookingManagement from './components/BookingManagement';
 import * as XLSX from 'xlsx'; // Add this import for debugging
+import TeacherTelegramManagement from './components/TeacherTelegramManagement';
 import './App.css';
 
 const getTodayScheduleDay = () => {
@@ -234,6 +235,7 @@ const AppContent = () => {
     { id: 'dashboard', icon: '📊', label: t('tabDashboard') || 'Teacher Stats' },
     { id: 'conflicts', icon: '⚠️', label: t('tabConflicts') || 'Conflicts', badge: conflictCount },
     { id: 'bookings', icon: '🏫', label: t('tabBookings') || 'Lab Bookings', badge: 0 }, // ADD THIS
+    { id: 'telegram', icon: '📱', label: t('tabTelegram') || 'Telegram' },
   ];
 
   return (
@@ -309,8 +311,9 @@ const AppContent = () => {
         {activeTab === 'dashboard' && <TeacherDashboard />}
         {activeTab === 'conflicts' && <ConflictPage onJumpToCell={handleJumpToCell} />}
         {activeTab === 'bookings' && <BookingManagement />}
+        {activeTab === 'telegram' && <TeacherTelegramManagement />}
       </div>
-        
+
       <ClassModal
         isOpen={modalOpen} onClose={handleCloseModal}
         group={currentCell.group} day={currentCell.day} time={currentCell.time}

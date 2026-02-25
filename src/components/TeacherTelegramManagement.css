@@ -1,0 +1,227 @@
+/* src/components/TeacherTelegramManagement.css */
+
+.teacher-telegram-management {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.management-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.management-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.btn-refresh {
+  padding: 8px 16px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.info-box {
+  background: var(--primary-light);
+  border-left: 4px solid var(--primary);
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.info-box h3 {
+  margin-top: 0;
+  color: var(--primary);
+}
+
+.info-box ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.info-box li {
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.teachers-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-card);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px var(--shadow);
+}
+
+.teachers-table thead {
+  background: var(--bg-tertiary);
+}
+
+.teachers-table th {
+  padding: 16px;
+  text-align: left;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+}
+
+.teachers-table td {
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.teacher-name {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.telegram-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.telegram-input:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.has-id {
+  color: var(--success);
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.no-id {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.status {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.status.enabled {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.status.disabled {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 8px;
+  transition: all 0.2s;
+}
+
+.btn-edit {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-save {
+  background: var(--success);
+  color: white;
+}
+
+.btn-cancel {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.bot-commands {
+  margin-top: 32px;
+  background: var(--bg-card);
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.bot-commands h3 {
+  margin-top: 0;
+  color: var(--text-primary);
+}
+
+.bot-commands ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.bot-commands li {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.bot-commands li:last-child {
+  border-bottom: none;
+}
+
+.bot-commands code {
+  background: var(--bg-tertiary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  color: var(--primary);
+  font-family: monospace;
+}
+
+.no-teachers {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-secondary);
+}
+
+.loading {
+  text-align: center;
+  padding: 48px;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .teachers-table {
+    font-size: 0.9rem;
+  }
+
+  .teachers-table th,
+  .teachers-table td {
+    padding: 12px 8px;
+  }
+
+  .btn {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+  }
+}
