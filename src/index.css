@@ -1,6 +1,6 @@
 /* PROFESSIONAL UNIVERSITY THEME */
 
-:root {
+ body[data-theme="light"]{
   --bg-main: #fafbfc;              /* <-- ЭТО ФОН ВСЕЙ СТРАНИЦЫ (светлый) */
   --bg-secondary: #ffffff;
   --bg-tertiary: #f4f6f8;
