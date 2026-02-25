@@ -41,10 +41,10 @@
 }
 
 body[data-theme="dark"] {
-  --bg-main: #bdc8d2;              /* <-- ЭТО ФОН ВСЕЙ СТРАНИЦЫ (темный синий) */
+  --bg-main: #c7c7c7;              /* <-- ЭТО ФОН ВСЕЙ СТРАНИЦЫ (темный синий) */
   --bg-secondary: #ebeef4;
-  --bg-tertiary: #c6d1eb;
-  --bg-card: #e3e7f0;
+  --bg-tertiary: #a6aab3;
+  --bg-card: #a0b5e8;
   
   --text-primary: #e6e9ef;
   --text-secondary: #b4b9c5;
