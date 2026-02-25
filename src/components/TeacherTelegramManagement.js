@@ -10,7 +10,7 @@ const TeacherTelegramManagement = () => {
   const [editingId, setEditingId] = useState(null);
   const [telegramInput, setTelegramInput] = useState('');
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
   const fetchTeachers = async () => {
     setLoading(true);
@@ -35,30 +35,30 @@ const TeacherTelegramManagement = () => {
   }, []);
 
   const handleSaveTelegramId = async (id) => {
-    try {
-      const token = localStorage.getItem('scheduleToken');
-      const response = await fetch(`${API_URL}/teachers/${id}/telegram`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ telegram_id: telegramInput })
-      });
-      
-      const data = await response.json();
-      if (data.success) {
-        alert(t('telegramIdSaved') || 'Telegram ID saved!');
-        setEditingId(null);
-        setTelegramInput('');
-        fetchTeachers();
-      } else {
-        alert(`Error: ${data.error}`);
-      }
-    } catch (error) {
-      alert(`Error: ${error.message}`);
+  try {
+    const token = localStorage.getItem('scheduleToken');
+    const response = await fetch(`${API_URL}/teachers/${id}`, {  // ИСПРАВЛЕНО
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ telegram_id: telegramInput })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      alert(t('telegramIdSaved') || 'Telegram ID saved!');
+      setEditingId(null);
+      setTelegramInput('');
+      fetchTeachers();
+    } else {
+      alert(`Error: ${data.error}`);
     }
-  };
+  } catch (error) {
+    alert(`Error: ${error.message}`);
+  }
+};
 
   const startEdit = (teacher) => {
     setEditingId(teacher.id);
