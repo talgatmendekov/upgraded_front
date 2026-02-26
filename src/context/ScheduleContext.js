@@ -13,10 +13,10 @@ export const useSchedule = () => {
 };
 
 export const ScheduleProvider = ({ children }) => {
-  const [groups,   setGroups]   = useState(UNIVERSITY_GROUPS);
+  const [groups, setGroups] = useState(UNIVERSITY_GROUPS);
   const [schedule, setSchedule] = useState({});
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // â”€â”€ Load everything from backend on mount â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const loadAll = useCallback(async () => {
@@ -55,7 +55,7 @@ export const ScheduleProvider = ({ children }) => {
       const key = `${group}-${day}-${time}`;
       setSchedule(prev => ({
         ...prev,
-        [key]: { group, day, time, course, teacher: teacher||'', room: room||'', subjectType: subjectType||'lecture', duration }
+        [key]: { group, day, time, course, teacher: teacher || '', room: room || '', subjectType: subjectType || 'lecture', duration }
       }));
     } catch (err) {
       alert(`Failed to save class: ${err.message}`);
@@ -79,9 +79,9 @@ export const ScheduleProvider = ({ children }) => {
   // Move = update destination + delete source (or swap)
   const moveClass = async (fromGroup, fromDay, fromTime, toGroup, toDay, toTime) => {
     const fromKey = `${fromGroup}-${fromDay}-${fromTime}`;
-    const toKey   = `${toGroup}-${toDay}-${toTime}`;
+    const toKey = `${toGroup}-${toDay}-${toTime}`;
     const fromData = schedule[fromKey];
-    const toData   = schedule[toKey];
+    const toData = schedule[toKey];
     if (!fromData) return;
 
     try {
@@ -186,11 +186,22 @@ export const ScheduleProvider = ({ children }) => {
       }
 
       // Save every class
-      await Promise.all(
-        Object.values(data.schedule).map(e =>
-          scheduleAPI.save(e.group, e.day, e.time, e.course, e.teacher, e.room, e.subjectType)
-        )
-      );
+      // await Promise.all(
+      //   Object.values(data.schedule).map(e =>
+      //     scheduleAPI.save(e.group, e.day, e.time, e.course, e.teacher, e.room, e.subjectType)
+      //   )
+      // );
+
+
+      const entries = Object.values(data.schedule);
+      const BATCH = 10;
+      for (let i = 0; i < entries.length; i += BATCH) {
+        const batch = entries.slice(i, i + BATCH);
+        await Promise.all(
+          batch.map(e => scheduleAPI.save(e.group, e.day, e.time, e.course, e.teacher, e.room, e.subjectType))
+        );
+        if (i + BATCH < entries.length) await new Promise(r => setTimeout(r, 200));
+      }
 
       await loadAll(); // Reload from backend to get canonical state
       return { success: true };
