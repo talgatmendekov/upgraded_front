@@ -1,21 +1,92 @@
 // Frontend: src/components/TeacherTelegramManagement.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import BroadcastMessage from './BroadcastMessage';
 import './TeacherTelegramManagement.css';
-import { normalizeTeacherName } from '../context/ScheduleContext';
+
+// ── Same normalization as ScheduleContext (inline copy so no circular import) ─
+const CANONICAL = {
+  'dr. daniyar satybaldiev':          'Dr. Daniiar Satybaldiev',
+  'mr. daniyar satybaldiev':          'Dr. Daniiar Satybaldiev',
+  'dr daniiar satybaldiev':           'Dr. Daniiar Satybaldiev',
+  'mr. daniiar satybaldiev':          'Dr. Daniiar Satybaldiev',
+  'dr. daniar satybaldiev':           'Dr. Daniiar Satybaldiev',
+  'mr. daniar satybaldiev':           'Dr. Daniiar Satybaldiev',
+  'mr. nurlan mukambetov':            'Mr. Nurlan Mukambaev',
+  'mr. erustan erkebulanov':          'Mr. Erustan Erkebulanov',
+  'dr. sheraly matanov':              'Dr. Sherali Matanov',
+  'mr. hussien chebsi':               'Mr. Hussein Chebsi',
+  'mr. ahmad sarosh':                 'Dr. Ahmad Sarosh',
+  'ms. cholpon alieva':               'Dr. Cholpon Alieva',
+  'alimpieva.l.v':                    'Alimpieva L.',
+  'ms. saidalieva a.':                'Ms. Saidalieva',
+  'ms. bopushova asina':              'Ms. Asina',
+  'ms. meerim':                       'Ms. Meerim Chukaeva',
+  'ms. meerim chukaeva (own device)': 'Ms. Meerim Chukaeva',
+  'mr. murrey':                       'Mr. Murrey Eldred',
+  'ms. tattybubu arap kyzy':          'Ms. Tattybubu',
+};
+
+function normalizeName(raw) {
+  if (!raw) return '';
+  let s = raw.trim();
+  s = s.replace(/([a-z])(LAB\d*|BIGLAB|B\d+)/g, '$1 $2');
+  s = s.replace(/^\/+/, '').replace(/\/.*$/, '').trim();
+  s = s.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  s = s.replace(/\s+until+\b.*/i, '').trim();
+  s = s.replace(/\s+(?:with\s+)?own\b.*/i, '').trim();
+  s = s.replace(/\s+make\s+up\b.*/i, '').trim();
+  s = s.replace(/\s+at\s+\d+[:.]\d+.*/i, '').trim();
+  s = s.replace(/\s*\+.*$/, '').trim();
+  const TRAIL = /\s+([Bb]\s?\d*\w*|[Aa]\d+|LAB\d*(\(\d+\))?|BIGLAB|BigLab|Lab\d*(\(\d+\))?|LINK|WEB|web|link|WeB|и\d+)$/i;
+  let prev; do { prev = s; s = s.replace(TRAIL, '').trim(); } while (s !== prev);
+  s = s.replace(/,\s*[Bb]\d+.*$/, '').replace(/[,]+$/, '').trim();
+  s = s.replace(/\b(Dr|Mr|Ms|Mrs|Prof)\.(\w)/g, '$1. $2');
+  s = s.replace(/\b(Dr|Mr|Ms|Mrs|Prof)\s+(?=[A-Z])/g, '$1. ');
+  s = s.replace(/\s{2,}/g, ' ').trim();
+  if (!s) return '';
+  if (/^[Bb]\d+/.test(s)) return '';
+  if (/^(ALATOO|German\s|DevOps\s|COM\b|\(COM\)|B201)/i.test(s)) return '';
+  return CANONICAL[s.toLowerCase()] || s;
+}
+
+function deduplicateTeachers(rows) {
+  // Group all DB rows by their canonical name
+  const groups = new Map(); // canonicalName → [row, ...]
+  for (const row of rows) {
+    const key = normalizeName(row.name) || row.name.trim();
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+
+  // For each group: pick the row with a telegram_id if any, else first row
+  return Array.from(groups.entries())
+    .map(([canonicalName, members]) => {
+      const winner = members.find(r => r.telegram_id) || members[0];
+      return {
+        ...winner,
+        displayName: canonicalName,
+        duplicateIds: members.map(r => r.id),   // all DB ids in this group
+        duplicateCount: members.length,
+      };
+    })
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const TeacherTelegramManagement = () => {
   const { t } = useLanguage();
-  const [teachers, setTeachers]           = useState([]);
-  const [groups, setGroups]               = useState([]);
-  const [loading, setLoading]             = useState(true);
-  const [activeSection, setActiveSection] = useState('teachers');
+  const [rawTeachers, setRawTeachers] = useState([]);
+  const [groups, setGroups]           = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [tab, setTab]                 = useState('teachers'); // teachers | groups | broadcast
+  const [search, setSearch]           = useState('');
 
-  const [editingId, setEditingId]             = useState(null);
-  const [telegramInput, setTelegramInput]     = useState('');
-  const [editingGroupId, setEditingGroupId]   = useState(null);
-  const [groupChatInput, setGroupChatInput]   = useState('');
+  const [editingId, setEditingId]           = useState(null);
+  const [telegramInput, setTelegramInput]   = useState('');
+  const [editingGroup, setEditingGroup]     = useState(null);
+  const [groupChatInput, setGroupChatInput] = useState('');
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
   const token   = () => localStorage.getItem('scheduleToken');
@@ -25,44 +96,11 @@ const TeacherTelegramManagement = () => {
     try {
       const res  = await fetch(`${API_URL}/teachers`, { headers: { Authorization: `Bearer ${token()}` } });
       const data = await res.json();
-      if (!data.success) return;
-
-      // Deduplicate using the same normalizeTeacherName as the schedule filter.
-      // For each canonical name, keep the row that has a telegram_id (preferred),
-      // or the first row if none have one. Collect all raw IDs in the group so
-      // deleting the canonical entry also removes all duplicates.
-      const canonical = new Map(); // canonicalName → best row
-      const allIds    = new Map(); // canonicalName → [id, id, ...]
-
-      for (const teacher of data.data) {
-        const norm = normalizeTeacherName(teacher.name) || teacher.name.trim();
-        if (!allIds.has(norm)) allIds.set(norm, []);
-        allIds.get(norm).push(teacher.id);
-
-        if (!canonical.has(norm)) {
-          canonical.set(norm, teacher);
-        } else {
-          // Prefer the row that already has a telegram_id
-          const existing = canonical.get(norm);
-          if (!existing.telegram_id && teacher.telegram_id) {
-            canonical.set(norm, teacher);
-          }
-        }
-      }
-
-      // Attach the list of all duplicate DB ids so we can delete them all at once
-      const deduped = Array.from(canonical.values()).map(t => ({
-        ...t,
-        _allIds: allIds.get(normalizeTeacherName(t.name) || t.name.trim()),
-      }));
-
-      // Sort alphabetically
-      deduped.sort((a, b) => a.name.localeCompare(b.name));
-      setTeachers(deduped);
+      if (data.success) setRawTeachers(data.data);
     } catch (e) { console.error(e); }
   };
 
-  const fetchGroupChannels = async () => {
+  const fetchGroups = async () => {
     try {
       const res  = await fetch(`${API_URL}/group-channels`, { headers: { Authorization: `Bearer ${token()}` } });
       const data = await res.json();
@@ -72,75 +110,74 @@ const TeacherTelegramManagement = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    await Promise.all([fetchTeachers(), fetchGroupChannels()]);
+    await Promise.all([fetchTeachers(), fetchGroups()]);
     setLoading(false);
   };
 
   useEffect(() => { fetchAll(); }, []);
 
+  // ── Deduplicated + filtered teacher list ────────────────────────────────────
+  const teachers = useMemo(() => {
+    const deduped = deduplicateTeachers(rawTeachers);
+    if (!search.trim()) return deduped;
+    const q = search.toLowerCase();
+    return deduped.filter(t => t.displayName.toLowerCase().includes(q));
+  }, [rawTeachers, search]);
+
+  // ── Stats ───────────────────────────────────────────────────────────────────
+  const stats = useMemo(() => ({
+    total:    teachers.length,
+    linked:   teachers.filter(t => t.telegram_id).length,
+    dupes:    rawTeachers.length - deduplicateTeachers(rawTeachers).length,
+    gLinked:  groups.filter(g => g.chat_id).length,
+    gTotal:   groups.length,
+  }), [teachers, rawTeachers, groups]);
+
   // ── Teacher actions ─────────────────────────────────────────────────────────
-  const handleSaveTelegramId = async (id) => {
+  const saveTelegramId = async (teacher) => {
     try {
-      const res  = await fetch(`${API_URL}/teachers/${id}/telegram`, {
+      const res  = await fetch(`${API_URL}/teachers/${teacher.id}/telegram`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ telegram_id: telegramInput.trim() }),
       });
       const data = await res.json();
       if (data.success) { setEditingId(null); setTelegramInput(''); fetchTeachers(); }
-      else alert(`Error: ${data.error}`);
-    } catch (e) { alert(`Error: ${e.message}`); }
+      else alert('Error: ' + data.error);
+    } catch (e) { alert('Error: ' + e.message); }
   };
 
-  const handleDeleteTelegramId = async (id, name) => {
-    if (!window.confirm(`Remove Telegram ID for ${name}?`)) return;
+  const removeTelegramId = async (teacher) => {
+    if (!window.confirm(`Remove Telegram ID for ${teacher.displayName}?`)) return;
     try {
-      const url = `${API_URL}/teachers/${id}/telegram`;
-      console.log('DELETE', url);
-      const res = await fetch(url, {
+      const res  = await fetch(`${API_URL}/teachers/${teacher.id}/telegram`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token()}` },
       });
-      console.log('Response status:', res.status);
       const text = await res.text();
-      console.log('Response body:', text);
-      let data;
-      try { data = JSON.parse(text); } catch { data = { success: false, error: text }; }
-      if (data.success) {
-        fetchTeachers();
-      } else {
-        alert('Delete failed (HTTP ' + res.status + '):\n' + (data.error || text));
-      }
-    } catch (e) {
-      alert('Network error: ' + e.message);
-    }
+      let data; try { data = JSON.parse(text); } catch { data = { success: false, error: text }; }
+      if (data.success) fetchTeachers();
+      else alert('Delete failed (' + res.status + '): ' + (data.error || text));
+    } catch (e) { alert('Network error: ' + e.message); }
   };
 
-  const handleDeleteTeacher = async (teacher) => {
-    const dupeCount = teacher._allIds ? teacher._allIds.length : 1;
-    const dupeNote  = dupeCount > 1 ? `\n(This will also delete ${dupeCount - 1} duplicate record(s) from the database.)` : '';
-    if (!window.confirm(`⚠️ Permanently delete teacher "${teacher.name}"?\nThis cannot be undone.${dupeNote}`)) return;
+  const deleteTeacher = async (teacher) => {
+    const extra = teacher.duplicateCount > 1
+      ? `\n\nThis will remove ${teacher.duplicateCount} duplicate records.` : '';
+    if (!window.confirm(`Permanently delete "${teacher.displayName}"?${extra}`)) return;
     try {
-      // Delete all duplicate rows for this canonical name
-      const ids = teacher._allIds || [teacher.id];
-      const results = await Promise.all(ids.map(id =>
+      await Promise.all(teacher.duplicateIds.map(id =>
         fetch(`${API_URL}/teachers/${id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token()}` },
-        }).then(r => r.json())
+        })
       ));
-      const anyFail = results.find(r => !r.success);
-      if (anyFail) {
-        alert('Some deletes failed: ' + anyFail.error);
-      }
       fetchTeachers();
-    } catch (e) {
-      alert('Network error: ' + e.message);
-    }
+    } catch (e) { alert('Error: ' + e.message); }
   };
 
-  // ── Group channel actions ───────────────────────────────────────────────────
-  const handleSaveGroupChannel = async (groupName) => {
+  // ── Group actions ───────────────────────────────────────────────────────────
+  const saveGroup = async (groupName) => {
     try {
       const res  = await fetch(`${API_URL}/group-channels`, {
         method: 'POST',
@@ -148,330 +185,280 @@ const TeacherTelegramManagement = () => {
         body: JSON.stringify({ group_name: groupName, chat_id: groupChatInput.trim() }),
       });
       const data = await res.json();
-      if (data.success) { setEditingGroupId(null); setGroupChatInput(''); fetchGroupChannels(); }
-      else alert(`Error: ${data.error}`);
-    } catch (e) { alert(`Error: ${e.message}`); }
+      if (data.success) { setEditingGroup(null); setGroupChatInput(''); fetchGroups(); }
+      else alert('Error: ' + data.error);
+    } catch (e) { alert('Error: ' + e.message); }
   };
 
-  const handleDeleteGroupChannel = async (groupName) => {
-    if (!window.confirm(`Remove Telegram channel for group ${groupName}?`)) return;
+  const deleteGroup = async (groupName) => {
+    if (!window.confirm(`Remove channel for group ${groupName}?`)) return;
     try {
-      const url = `${API_URL}/group-channels/${encodeURIComponent(groupName)}`;
-      console.log('DELETE', url);
-      const res = await fetch(url, {
+      const res  = await fetch(`${API_URL}/group-channels/${encodeURIComponent(groupName)}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token()}` },
       });
-      console.log('Response status:', res.status);
       const text = await res.text();
-      console.log('Response body:', text);
-      let data;
-      try { data = JSON.parse(text); } catch { data = { success: false, error: text }; }
-      if (data.success) {
-        fetchGroupChannels();
-      } else {
-        alert('Delete failed (HTTP ' + res.status + '):\n' + (data.error || text));
-      }
-    } catch (e) {
-      alert('Network error: ' + e.message);
-    }
+      let data; try { data = JSON.parse(text); } catch { data = { success: false, error: text }; }
+      if (data.success) fetchGroups();
+      else alert('Delete failed: ' + (data.error || text));
+    } catch (e) { alert('Error: ' + e.message); }
   };
 
-  if (loading) return <div className="loading">{t('loading') || 'Loading...'}</div>;
-
-  const SECTIONS = [
-    { id: 'teachers',  icon: '👨‍🏫', label: t('tabTeachers')       || 'Teachers'       },
-    { id: 'groups',    icon: '👥',   label: t('tabGroupChannels')   || 'Group Channels' },
-    { id: 'broadcast', icon: '📢',   label: t('tabBroadcast')       || 'Broadcast'      },
-  ];
+  // ── Render ──────────────────────────────────────────────────────────────────
+  if (loading) return <div className="ttm-loading"><span>Loading…</span></div>;
 
   return (
-    <div className="teacher-telegram-management">
+    <div className="ttm">
 
-      {/* Header */}
-      <div className="management-header">
-        <h2>📱 {t('telegramNotifications') || 'Telegram Notifications'}</h2>
-        <button onClick={fetchAll} className="btn-refresh" title={t('refresh') || 'Refresh'}>🔄</button>
+      {/* ── Header ── */}
+      <div className="ttm-header">
+        <div className="ttm-header-left">
+          <h1 className="ttm-title">Telegram</h1>
+          <p className="ttm-subtitle">Manage notifications & broadcast messages</p>
+        </div>
+        <button className="ttm-refresh" onClick={fetchAll} title="Refresh">↻</button>
       </div>
 
-      {/* Section tabs */}
-      <div className="section-tabs">
-        {SECTIONS.map(s => (
-          <button
-            key={s.id}
-            className={`section-tab ${activeSection === s.id ? 'active' : ''}`}
-            onClick={() => setActiveSection(s.id)}
-          >
-            {s.icon} {s.label}
+      {/* ── Stats bar ── */}
+      <div className="ttm-stats">
+        <div className="ttm-stat">
+          <span className="ttm-stat-val">{stats.linked}</span>
+          <span className="ttm-stat-lbl">teachers linked</span>
+        </div>
+        <div className="ttm-stat-div" />
+        <div className="ttm-stat">
+          <span className="ttm-stat-val">{stats.total - stats.linked}</span>
+          <span className="ttm-stat-lbl">not linked</span>
+        </div>
+        <div className="ttm-stat-div" />
+        <div className="ttm-stat">
+          <span className="ttm-stat-val">{stats.gLinked}</span>
+          <span className="ttm-stat-lbl">group channels</span>
+        </div>
+        {stats.dupes > 0 && (
+          <>
+            <div className="ttm-stat-div" />
+            <div className="ttm-stat ttm-stat-warn">
+              <span className="ttm-stat-val">{stats.dupes}</span>
+              <span className="ttm-stat-lbl">dupes hidden</span>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ── Tabs ── */}
+      <div className="ttm-tabs">
+        {[
+          { id: 'teachers',  label: 'Teachers' },
+          { id: 'groups',    label: 'Group Channels' },
+          { id: 'broadcast', label: 'Broadcast' },
+        ].map(t => (
+          <button key={t.id} className={`ttm-tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
+            {t.label}
           </button>
         ))}
       </div>
 
-      {/* ══════════════════════════════════════════════════════
-          TEACHERS TAB
-      ══════════════════════════════════════════════════════ */}
-      {activeSection === 'teachers' && (
-        <>
-          <div className="info-box">
-            <h3>ℹ️ {t('howToSetup') || 'How to Setup'}</h3>
-            <ol>
-              <li>{t('teacherSetupStep1') || 'Teachers open the bot and send /start'}</li>
-              <li>{t('teacherSetupStep2') || 'They receive their Telegram ID — paste it below'}</li>
-              <li>{t('teacherSetupStep3') || 'They get schedule-change alerts + 1-hour class reminders'}</li>
-            </ol>
+      {/* ════════════════════════════════════════
+          TEACHERS
+      ════════════════════════════════════════ */}
+      {tab === 'teachers' && (
+        <div className="ttm-pane">
+          {/* Search */}
+          <div className="ttm-search-wrap">
+            <input
+              className="ttm-search"
+              type="text"
+              placeholder="Search teacher…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            {search && <button className="ttm-search-clear" onClick={() => setSearch('')}>✕</button>}
           </div>
 
-          <div className="teachers-list">
-            {teachers.length === 0 ? (
-              <p className="no-teachers">{t('noTeachersFound') || 'No teachers found.'}</p>
-            ) : (
-              <table className="teachers-table">
-                <thead>
-                  <tr>
-                    <th>{t('teacherName')    || 'Teacher Name'}</th>
-                    <th>{t('telegramId')     || 'Telegram ID'}</th>
-                    <th>{t('notifications')  || 'Notifications'}</th>
-                    <th>{t('actions')        || 'Actions'}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {teachers.map(teacher => (
-                    <tr key={teacher.id}>
-
-                      <td className="teacher-name">
-                        {teacher.name}
-                        {teacher._allIds && teacher._allIds.length > 1 && (
-                          <span className="dupe-badge" title={`${teacher._allIds.length} duplicate records merged`}>
-                            ×{teacher._allIds.length}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Telegram ID cell */}
-                      <td>
-                        {editingId === teacher.id ? (
-                          <input
-                            type="text"
-                            value={telegramInput}
-                            onChange={e => setTelegramInput(e.target.value)}
-                            placeholder={t('telegramIdPlaceholder') || 'e.g. 1300165738'}
-                            className="telegram-input"
-                            autoFocus
-                            onKeyDown={e => {
-                              if (e.key === 'Enter')  handleSaveTelegramId(teacher.id);
-                              if (e.key === 'Escape') { setEditingId(null); setTelegramInput(''); }
-                            }}
-                          />
-                        ) : (
-                          <span className={teacher.telegram_id ? 'has-id' : 'no-id'}>
-                            {teacher.telegram_id || (t('notSet') || 'Not set')}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Status cell */}
-                      <td>
-                        <span className={`status ${teacher.telegram_id && teacher.notifications_enabled ? 'enabled' : 'disabled'}`}>
-                          {teacher.telegram_id
-                            ? (teacher.notifications_enabled
-                                ? (t('notificationsOn')  || 'ON')
-                                : (t('notificationsOff') || 'OFF'))
-                            : '—'}
-                        </span>
-                      </td>
-
-                      {/* ── ACTION BUTTONS ── */}
-                      <td className="action-cell">
-                        {editingId === teacher.id ? (
-                          /* Editing mode: Save + Cancel */
-                          <>
-                            <button
-                              onClick={() => handleSaveTelegramId(teacher.id)}
-                              className="btn btn-save"
-                            >
-                              💾 {t('save') || 'Save'}
-                            </button>
-                            <button
-                              onClick={() => { setEditingId(null); setTelegramInput(''); }}
-                              className="btn btn-cancel"
-                            >
-                              ✕ {t('cancel') || 'Cancel'}
-                            </button>
-                          </>
-                        ) : (
-                          /* View mode: Edit + Delete */
-                          <>
-                            <button
-                              onClick={() => { setEditingId(teacher.id); setTelegramInput(teacher.telegram_id || ''); }}
-                              className="btn btn-edit"
-                            >
-                              ✏️ {t('edit') || 'Edit'}
-                            </button>
-                            {/* Delete Telegram ID button */}
-                            <button
-                              onClick={() => handleDeleteTelegramId(teacher.id, teacher.name)}
-                              className="btn btn-delete"
-                              disabled={!teacher.telegram_id}
-                              title={!teacher.telegram_id ? 'No Telegram ID to remove' : 'Remove Telegram ID only'}
-                            >
-                              📵 {t('deleteTelegramId') || 'Remove ID'}
-                            </button>
-                            {/* Delete Teacher entirely button */}
-                            <button
-                              onClick={() => handleDeleteTeacher(teacher)}
-                              className="btn btn-delete-teacher"
-                              title="Delete this teacher from the database"
-                            >
-                              🗑️ {t('deleteTeacher') || 'Delete Teacher'}
-                            </button>
-                          </>
-                        )}
-                      </td>
-
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+          {/* Setup hint */}
+          <div className="ttm-hint">
+            Teacher sends <code>/start</code> to the bot → gets their ID → you paste it here
           </div>
 
-          <div className="bot-commands">
-            <h3>{t('botCommands') || 'Bot Commands for Teachers'}</h3>
-            <ul>
-              <li><code>/start</code>   — {t('cmdStart')   || 'Get your Telegram ID'}</li>
-              <li><code>/status</code>  — {t('cmdStatus')  || 'Check registration status'}</li>
-              <li><code>/enable</code>  — {t('cmdEnable')  || 'Enable notifications'}</li>
-              <li><code>/disable</code> — {t('cmdDisable') || 'Disable notifications'}</li>
-            </ul>
-          </div>
-        </>
-      )}
-
-      {/* ══════════════════════════════════════════════════════
-          GROUP CHANNELS TAB
-      ══════════════════════════════════════════════════════ */}
-      {activeSection === 'groups' && (
-        <>
-          <div className="info-box">
-            <h3>ℹ️ {t('howToLinkGroup') || 'How to link a group channel'}</h3>
-            <ol>
-              <li>{t('groupSetupStep1') || 'Create a Telegram group or channel for each student group'}</li>
-              <li>{t('groupSetupStep2') || 'Add your bot as an Admin'}</li>
-              <li>
-                {t('groupSetupStep3') || 'Get the chat ID (negative number, e.g.'} <code>-1001234567890</code>)
-                {' '}{t('groupSetupStep3b') || 'via @getidsbot'}
-              </li>
-              <li>{t('groupSetupStep4') || 'Paste it here — students receive schedule changes automatically'}</li>
-            </ol>
-          </div>
-
-          <div className="teachers-list">
-            <table className="teachers-table">
+          {/* Table */}
+          <div className="ttm-table-wrap">
+            <table className="ttm-table">
               <thead>
                 <tr>
-                  <th>{t('group')        || 'Group'}</th>
-                  <th>{t('telegramChatId') || 'Telegram Chat ID'}</th>
-                  <th>{t('status')       || 'Status'}</th>
-                  <th>{t('actions')      || 'Actions'}</th>
+                  <th>Name</th>
+                  <th>Telegram ID</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {groups.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="no-teachers">
-                      {t('noGroupChannels') || 'No group channels configured yet.'}
-                    </td>
-                  </tr>
+                {teachers.length === 0 && (
+                  <tr><td colSpan={4} className="ttm-empty">No teachers found</td></tr>
                 )}
-                {groups.map(group => (
-                  <tr key={group.group_name}>
+                {teachers.map(teacher => (
+                  <tr key={teacher.id} className={teacher.telegram_id ? 'row-linked' : ''}>
 
-                    <td className="teacher-name">{group.group_name}</td>
-
-                    {/* Chat ID cell */}
-                    <td>
-                      {editingGroupId === group.group_name ? (
-                        <input
-                          type="text"
-                          value={groupChatInput}
-                          onChange={e => setGroupChatInput(e.target.value)}
-                          placeholder={t('chatIdPlaceholder') || 'e.g. -1001234567890'}
-                          className="telegram-input"
-                          autoFocus
-                          onKeyDown={e => {
-                            if (e.key === 'Enter')  handleSaveGroupChannel(group.group_name);
-                            if (e.key === 'Escape') { setEditingGroupId(null); setGroupChatInput(''); }
-                          }}
-                        />
-                      ) : (
-                        <span className={group.chat_id ? 'has-id' : 'no-id'}>
-                          {group.chat_id || (t('notSet') || 'Not set')}
+                    {/* Name */}
+                    <td className="ttm-name-cell">
+                      <span className="ttm-name">{teacher.displayName}</span>
+                      {teacher.duplicateCount > 1 && (
+                        <span className="ttm-dupe-tag" title={`${teacher.duplicateCount} duplicate records merged`}>
+                          {teacher.duplicateCount} records
                         </span>
                       )}
                     </td>
 
-                    {/* Status cell */}
+                    {/* Telegram ID */}
                     <td>
-                      <span className={`status ${group.chat_id ? 'enabled' : 'disabled'}`}>
-                        {group.chat_id
-                          ? (t('linked')    || 'Linked')
-                          : (t('notLinked') || 'Not linked')}
-                      </span>
-                    </td>
-
-                    {/* ── ACTION BUTTONS ── */}
-                    <td className="action-cell">
-                      {editingGroupId === group.group_name ? (
-                        /* Editing mode: Save + Cancel */
-                        <>
-                          <button
-                            onClick={() => handleSaveGroupChannel(group.group_name)}
-                            className="btn btn-save"
-                          >
-                            💾 {t('save') || 'Save'}
-                          </button>
-                          <button
-                            onClick={() => { setEditingGroupId(null); setGroupChatInput(''); }}
-                            className="btn btn-cancel"
-                          >
-                            ✕ {t('cancel') || 'Cancel'}
-                          </button>
-                        </>
+                      {editingId === teacher.id ? (
+                        <input
+                          className="ttm-input"
+                          type="text"
+                          value={telegramInput}
+                          onChange={e => setTelegramInput(e.target.value)}
+                          placeholder="e.g. 1300165738"
+                          autoFocus
+                          onKeyDown={e => {
+                            if (e.key === 'Enter')  saveTelegramId(teacher);
+                            if (e.key === 'Escape') { setEditingId(null); setTelegramInput(''); }
+                          }}
+                        />
                       ) : (
-                        /* View mode: Edit + Delete */
-                        <>
-                          <button
-                            onClick={() => { setEditingGroupId(group.group_name); setGroupChatInput(group.chat_id || ''); }}
-                            className="btn btn-edit"
-                          >
-                            ✏️ {t('edit') || 'Edit'}
-                          </button>
-                          {/* Delete button — always shown, disabled when no chat_id */}
-                          <button
-                            onClick={() => handleDeleteGroupChannel(group.group_name)}
-                            className="btn btn-delete"
-                            disabled={!group.chat_id}
-                            title={!group.chat_id ? (t('noIdToDelete') || 'No ID to delete') : (t('deleteGroupChannel') || 'Remove group channel')}
-                          >
-                            🗑️ {t('delete') || 'Delete'}
-                          </button>
-                        </>
+                        <span className={teacher.telegram_id ? 'ttm-id-set' : 'ttm-id-empty'}>
+                          {teacher.telegram_id || '—'}
+                        </span>
                       )}
                     </td>
 
+                    {/* Status */}
+                    <td>
+                      <span className={`ttm-badge ${teacher.telegram_id ? 'badge-on' : 'badge-off'}`}>
+                        {teacher.telegram_id ? 'Linked' : 'Not set'}
+                      </span>
+                    </td>
+
+                    {/* Actions */}
+                    <td>
+                      <div className="ttm-actions">
+                        {editingId === teacher.id ? (
+                          <>
+                            <button className="ttm-btn save" onClick={() => saveTelegramId(teacher)}>Save</button>
+                            <button className="ttm-btn cancel" onClick={() => { setEditingId(null); setTelegramInput(''); }}>Cancel</button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              className="ttm-btn edit"
+                              onClick={() => { setEditingId(teacher.id); setTelegramInput(teacher.telegram_id || ''); }}
+                            >
+                              Edit
+                            </button>
+                            {teacher.telegram_id && (
+                              <button className="ttm-btn remove" onClick={() => removeTelegramId(teacher)}>
+                                Remove ID
+                              </button>
+                            )}
+                            <button className="ttm-btn danger" onClick={() => deleteTeacher(teacher)}>
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </>
+
+          {/* Bot commands */}
+          <div className="ttm-commands">
+            <p className="ttm-commands-title">Bot commands for teachers</p>
+            <div className="ttm-commands-grid">
+              <code>/start</code><span>Get your Telegram ID</span>
+              <code>/status</code><span>Check if registered</span>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════
-          BROADCAST TAB
-      ══════════════════════════════════════════════════════ */}
-      {activeSection === 'broadcast' && <BroadcastMessage />}
+      {/* ════════════════════════════════════════
+          GROUP CHANNELS
+      ════════════════════════════════════════ */}
+      {tab === 'groups' && (
+        <div className="ttm-pane">
+          <div className="ttm-hint">
+            Add bot as <strong>Admin</strong> to the group/channel → get chat ID via <code>@getidsbot</code> → paste below
+          </div>
 
+          <div className="ttm-table-wrap">
+            <table className="ttm-table">
+              <thead>
+                <tr>
+                  <th>Group</th>
+                  <th>Chat ID</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groups.length === 0 && (
+                  <tr><td colSpan={4} className="ttm-empty">No groups configured yet</td></tr>
+                )}
+                {groups.map(g => (
+                  <tr key={g.group_name} className={g.chat_id ? 'row-linked' : ''}>
+                    <td className="ttm-name-cell"><span className="ttm-name">{g.group_name}</span></td>
+                    <td>
+                      {editingGroup === g.group_name ? (
+                        <input
+                          className="ttm-input"
+                          type="text"
+                          value={groupChatInput}
+                          onChange={e => setGroupChatInput(e.target.value)}
+                          placeholder="e.g. -1001234567890"
+                          autoFocus
+                          onKeyDown={e => {
+                            if (e.key === 'Enter')  saveGroup(g.group_name);
+                            if (e.key === 'Escape') { setEditingGroup(null); setGroupChatInput(''); }
+                          }}
+                        />
+                      ) : (
+                        <span className={g.chat_id ? 'ttm-id-set' : 'ttm-id-empty'}>{g.chat_id || '—'}</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className={`ttm-badge ${g.chat_id ? 'badge-on' : 'badge-off'}`}>
+                        {g.chat_id ? 'Linked' : 'Not set'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="ttm-actions">
+                        {editingGroup === g.group_name ? (
+                          <>
+                            <button className="ttm-btn save" onClick={() => saveGroup(g.group_name)}>Save</button>
+                            <button className="ttm-btn cancel" onClick={() => { setEditingGroup(null); setGroupChatInput(''); }}>Cancel</button>
+                          </>
+                        ) : (
+                          <>
+                            <button className="ttm-btn edit" onClick={() => { setEditingGroup(g.group_name); setGroupChatInput(g.chat_id || ''); }}>Edit</button>
+                            {g.chat_id && <button className="ttm-btn danger" onClick={() => deleteGroup(g.group_name)}>Delete</button>}
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════
+          BROADCAST
+      ════════════════════════════════════════ */}
+      {tab === 'broadcast' && <BroadcastMessage />}
     </div>
   );
 };
