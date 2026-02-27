@@ -1,13 +1,15 @@
 // src/components/BookingManagement.js
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { useSchedule } from '../context/ScheduleContext';
 import './BookingManagement.css';
 
 const BookingManagement = () => {
   const { t } = useLanguage();
+  const { reload } = useSchedule(); // ← get reload from schedule context
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('pending'); // pending, approved, rejected, all
+  const [filter, setFilter] = useState('pending');
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -16,14 +18,10 @@ const BookingManagement = () => {
     try {
       const token = localStorage.getItem('scheduleToken');
       const response = await fetch(`${API_URL}/booking-requests`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-      if (data.success) {
-        setBookings(data.data);
-      }
+      if (data.success) setBookings(data.data);
     } catch (error) {
       console.error('Error fetching bookings:', error);
     } finally {
@@ -31,27 +29,21 @@ const BookingManagement = () => {
     }
   };
 
-  useEffect(() => {
-    fetchBookings();
-  }, []);
+  useEffect(() => { fetchBookings(); }, []);
 
   const handleApprove = async (id) => {
-    if (!window.confirm(t('confirmApproveBooking') || 'Approve this booking and add to schedule?')) {
-      return;
-    }
-
+    if (!window.confirm(t('confirmApproveBooking') || 'Approve this booking and add to schedule?')) return;
     try {
       const token = localStorage.getItem('scheduleToken');
       const response = await fetch(`${API_URL}/booking-requests/${id}/approve`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
       if (data.success) {
         alert(t('bookingApproved') || 'Booking approved and added to schedule!');
         fetchBookings();
+        await reload(); // ← refresh schedule so it appears instantly without page reload
       } else {
         alert(`Error: ${data.error}`);
       }
@@ -61,17 +53,12 @@ const BookingManagement = () => {
   };
 
   const handleReject = async (id) => {
-    if (!window.confirm(t('confirmRejectBooking') || 'Reject this booking request?')) {
-      return;
-    }
-
+    if (!window.confirm(t('confirmRejectBooking') || 'Reject this booking request?')) return;
     try {
       const token = localStorage.getItem('scheduleToken');
       const response = await fetch(`${API_URL}/booking-requests/${id}/reject`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
       if (data.success) {
@@ -86,17 +73,12 @@ const BookingManagement = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm(t('confirmDeleteBooking') || 'Delete this booking request?')) {
-      return;
-    }
-
+    if (!window.confirm(t('confirmDeleteBooking') || 'Delete this booking request?')) return;
     try {
       const token = localStorage.getItem('scheduleToken');
       const response = await fetch(`${API_URL}/booking-requests/${id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
       if (data.success) {
@@ -109,15 +91,10 @@ const BookingManagement = () => {
     }
   };
 
-  const filteredBookings = bookings.filter(b => 
-    filter === 'all' ? true : b.status === filter
-  );
-
+  const filteredBookings = bookings.filter(b => filter === 'all' ? true : b.status === filter);
   const pendingCount = bookings.filter(b => b.status === 'pending').length;
 
-  if (loading) {
-    return <div className="booking-loading">Loading bookings...</div>;
-  }
+  if (loading) return <div className="booking-loading">Loading bookings...</div>;
 
   return (
     <div className="booking-management">
@@ -127,28 +104,16 @@ const BookingManagement = () => {
       </div>
 
       <div className="booking-filters">
-        <button 
-          className={`filter-btn ${filter === 'pending' ? 'active' : ''}`}
-          onClick={() => setFilter('pending')}
-        >
+        <button className={`filter-btn ${filter === 'pending' ? 'active' : ''}`} onClick={() => setFilter('pending')}>
           ⏳ {t('pending') || 'Pending'} {pendingCount > 0 && <span className="badge">{pendingCount}</span>}
         </button>
-        <button 
-          className={`filter-btn ${filter === 'approved' ? 'active' : ''}`}
-          onClick={() => setFilter('approved')}
-        >
+        <button className={`filter-btn ${filter === 'approved' ? 'active' : ''}`} onClick={() => setFilter('approved')}>
           ✅ {t('approved') || 'Approved'}
         </button>
-        <button 
-          className={`filter-btn ${filter === 'rejected' ? 'active' : ''}`}
-          onClick={() => setFilter('rejected')}
-        >
+        <button className={`filter-btn ${filter === 'rejected' ? 'active' : ''}`} onClick={() => setFilter('rejected')}>
           ❌ {t('rejected') || 'Rejected'}
         </button>
-        <button 
-          className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
-          onClick={() => setFilter('all')}
-        >
+        <button className={`filter-btn ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
           📋 {t('all') || 'All'}
         </button>
       </div>
@@ -213,33 +178,22 @@ const BookingManagement = () => {
                 </div>
 
                 <div className="booking-meta">
-                  <small>
-                    {t('submitted') || 'Submitted'}: {new Date(booking.created_at).toLocaleString()}
-                  </small>
+                  <small>{t('submitted') || 'Submitted'}: {new Date(booking.created_at).toLocaleString()}</small>
                 </div>
               </div>
 
               <div className="booking-actions">
                 {booking.status === 'pending' && (
                   <>
-                    <button 
-                      onClick={() => handleApprove(booking.id)}
-                      className="btn btn-approve"
-                    >
+                    <button onClick={() => handleApprove(booking.id)} className="btn btn-approve">
                       ✅ {t('approve') || 'Approve'}
                     </button>
-                    <button 
-                      onClick={() => handleReject(booking.id)}
-                      className="btn btn-reject"
-                    >
+                    <button onClick={() => handleReject(booking.id)} className="btn btn-reject">
                       ❌ {t('reject') || 'Reject'}
                     </button>
                   </>
                 )}
-                <button 
-                  onClick={() => handleDelete(booking.id)}
-                  className="btn btn-delete"
-                >
+                <button onClick={() => handleDelete(booking.id)} className="btn btn-delete">
                   🗑️ {t('delete') || 'Delete'}
                 </button>
               </div>
