@@ -1,9 +1,10 @@
-// src/components/ScheduleTable.js - FIXED with colSpan
+// src/components/ScheduleTable.js - FIXED with colSpan + normalised teacher filter
 import React, { useState, useRef, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSchedule } from '../context/ScheduleContext';
 import { useLanguage } from '../context/LanguageContext';
 import { SUBJECT_TYPES, SUBJECT_TYPE_LABELS } from '../data/i18n';
+import { normalizeTeacherName } from '../context/ScheduleContext';
 import './ScheduleTable.css';
 
 const getTodayName = () => {
@@ -32,12 +33,10 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
   // Build skip map - cells that are continuation of multi-slot classes
   const cellsToSkipGlobal = useMemo(() => {
     const skipSet = new Set();
-    
     Object.values(schedule).forEach(classData => {
       if (classData.duration && classData.duration > 1) {
         const timeIdx = timeSlots.indexOf(classData.time);
         if (timeIdx !== -1) {
-          // Skip the NEXT time slots (horizontally)
           for (let i = 1; i < classData.duration; i++) {
             if (timeIdx + i < timeSlots.length) {
               const skipTime = timeSlots[timeIdx + i];
@@ -48,15 +47,18 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
         }
       }
     });
-    
     return skipSet;
   }, [schedule, timeSlots]);
 
   const getClass = (group, day, time) => schedule[`${group}-${day}-${time}`] || null;
 
+  // ── FIX: compare via normalised names so "Dr. X B110 LAB" matches filter "Dr. X" ──
+  const normSelectedTeacher = selectedTeacher ? normalizeTeacherName(selectedTeacher) : '';
+
   const shouldShowCell = (classData) => {
     if (!classData) return true;
-    if (selectedTeacher && classData.teacher !== selectedTeacher) return false;
+    if (normSelectedTeacher &&
+        normalizeTeacherName(classData.teacher) !== normSelectedTeacher) return false;
     return true;
   };
 
@@ -151,19 +153,17 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
                   <div className="group-cell-content">
                     <span className="group-name">{group}</span>
                     {isAuthenticated && (
-                      <button className="delete-group-btn" onClick={() => { 
-                        if (window.confirm(t('confirmDeleteGroup', { group }))) onDeleteGroup(group); 
+                      <button className="delete-group-btn" onClick={() => {
+                        if (window.confirm(t('confirmDeleteGroup', { group }))) onDeleteGroup(group);
                       }}>×</button>
                     )}
                   </div>
                 </td>
                 {daysToShow.map(day => timeSlots.map(time => {
                   const cellKey = `${group}-${day}-${time}`;
-                  
+
                   // Skip continuation cells
-                  if (cellsToSkipGlobal.has(cellKey)) {
-                    return null;
-                  }
+                  if (cellsToSkipGlobal.has(cellKey)) return null;
 
                   const classData = getClass(group, day, time);
                   const show = shouldShowCell(classData);
@@ -175,9 +175,11 @@ const ScheduleTable = ({ selectedDay, selectedTeacher, selectedGroup, onEditClas
                   const duration = classData?.duration ? parseInt(classData.duration) : 1;
 
                   if (!show) {
-                    return <td key={cellKey} className={`schedule-cell filtered-out ${isToday ? 'today-cell' : ''}`} colSpan={duration}>
-                      <div className="filtered-label">{t('filtered')}</div>
-                    </td>;
+                    return (
+                      <td key={cellKey} className={`schedule-cell filtered-out ${isToday ? 'today-cell' : ''}`} colSpan={duration}>
+                        <div className="filtered-label">{t('filtered')}</div>
+                      </td>
+                    );
                   }
 
                   return (
