@@ -13,40 +13,62 @@ export const useSchedule = () => {
 };
 
 // ─── Teacher name normalisation ───────────────────────────────────────────────
-// Strips trailing room tokens (B110, LAB, BIGLAB, LAB5(213), A202, и102 …)
-// so that "Dr. Mekuria B202", "Dr. Mekuria B204", "Dr. Mekuria" all collapse
-// to the same canonical name "Dr. Mekuria".
-const ROOM_TOKEN = /^(B\d+|A\d+|LAB\d*(\(\d+\))?|BIGLAB|Lab\d*(\(\d+\))?|и\d+)$/i;
-
-function normalizeTeacherName(raw) {
+// Strips ALL trailing room/location noise from teacher strings so that:
+//   "Dr. Mekuria B110 LAB"   → "Dr. Mekuria"
+//   "Dr. Mekuria B 202"      → "Dr. Mekuria"   (space inside room code)
+//   "Dr. Mekuria LAB3(210)"  → "Dr. Mekuria"
+//   "Mr. X BIGLAB + make up" → "Mr. X"
+//   "Ms. Y B109 (APPLE LAB)" → "Ms. Y"
+//   "Ms. Z B204/(15:30...)"  → "Ms. Z"
+//   "Mr. A b109"             → "Mr. A"          (lowercase room)
+//   "Mr. B LINK"             → "Mr. B"
+//   "Mr. C B WEB"            → "Mr. C"
+export function normalizeTeacherName(raw) {
   if (!raw) return '';
-  const parts = raw.trim().split(/\s+/);
-  // Drop tokens from the right as long as they look like room identifiers
-  let end = parts.length;
-  while (end > 0 && ROOM_TOKEN.test(parts[end - 1])) end--;
-  return parts.slice(0, end).join(' ').trim();
+  let s = raw.trim();
+
+  // 1. Remove trailing parenthetical info: "(APPLE LAB)", "(with own device)"
+  s = s.replace(/\s*\([^)]*\)\s*$/, '').trim();
+
+  // 2. Remove slash+parens variant: "B204/ (15:30 BIGLAB)"
+  s = s.replace(/\/\s*\(.*\)\s*$/, '').trim();
+
+  // 3. Repeatedly strip trailing noise tokens until stable.
+  //    Covers: B110, B 202, b109, A204, LAB, LAB3, LAB3(210), BIGLAB,
+  //            BigLab, LINK, WEB, web, link, WeB, и102, make, up
+  const TRAILING_NOISE = /\s+(B\s?\d*\w*|b\s?\d*\w*|A\d+|LAB\d*(\(\d+\))?|BIGLAB|BigLab|Lab\d*(\(\d+\))?|LINK|WEB|web|link|WeB|и\d+|make|up)$/i;
+  let prev;
+  do {
+    prev = s;
+    s = s.replace(TRAILING_NOISE, '').trim();
+  } while (s !== prev);
+
+  // 4. Strip trailing "+ anything" (e.g. "+ make up")
+  s = s.replace(/\s*\+.*$/, '').trim();
+
+  // 5. Strip trailing hyphenated lab refs like "B111-Lab"
+  s = s.replace(/\s+\S*[Ll]ab\S*$/, '').trim();
+
+  // 6. Collapse multiple spaces
+  s = s.replace(/\s{2,}/g, ' ').trim();
+
+  return s;
 }
 
-// Build a deduplicated, sorted teacher list from the schedule.
-// Uses the *normalised* name for deduplication but keeps the
-// shortest/cleanest version as the display value.
+// Build a deduplicated sorted teacher list from schedule data.
+// Normalises every raw string before deduplication, so
+// "Dr. X B110 LAB", "Dr. X B202", "Dr. X" all collapse to one entry "Dr. X".
 function buildTeacherList(scheduleMap) {
-  // Collect all raw teacher strings
-  const raw = Object.values(scheduleMap)
-    .map(e => e.teacher)
-    .filter(Boolean);
-
-  // Map normalised name → best (shortest clean) display name
-  const canonical = new Map(); // normalisedName → displayName
-  raw.forEach(t => {
-    const norm = normalizeTeacherName(t);
-    if (!norm) return;
-    if (!canonical.has(norm)) {
-      canonical.set(norm, norm); // use the normalised form as display
-    }
+  const seen   = new Set();
+  const result = [];
+  Object.values(scheduleMap).forEach(entry => {
+    if (!entry.teacher) return;
+    const norm = normalizeTeacherName(entry.teacher);
+    if (!norm || seen.has(norm)) return;
+    seen.add(norm);
+    result.push(norm);
   });
-
-  return [...canonical.values()].sort();
+  return result.sort();
 }
 
 export const ScheduleProvider = ({ children }) => {
@@ -75,10 +97,12 @@ export const ScheduleProvider = ({ children }) => {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
-  // ── Deduplicated teacher list (normalised names, no room suffixes) ──────────
+  // Deduplicated, normalised teacher list for the filter dropdown
   const teachers = buildTeacherList(schedule);
 
-  // ── getScheduleByTeacher must also match via normalised name ────────────────
+  // Filter schedule entries by teacher using normalised matching.
+  // Selecting "Dr. Remudin Mekuria" will correctly return entries
+  // stored as "Dr. Remudin Mekuria B110 LAB", "Dr. Remudin Mekuria B 202", etc.
   const getScheduleByTeacher = (teacherName) => {
     const normTarget = normalizeTeacherName(teacherName);
     return Object.entries(schedule).filter(
@@ -173,11 +197,9 @@ export const ScheduleProvider = ({ children }) => {
   const getScheduleByDay = (day) => Object.entries(schedule).filter(([, v]) => v.day === day);
   const exportSchedule   = () => JSON.stringify({ groups, schedule, exportDate: new Date().toISOString() }, null, 2);
 
-  // ── Import ─────────────────────────────────────────────────────────────────
   const importSchedule = async (jsonData) => {
     try {
       const data = JSON.parse(jsonData);
-
       let entries   = [];
       let groupList = [];
 
@@ -215,7 +237,6 @@ export const ScheduleProvider = ({ children }) => {
 
       await loadAll();
       return { success: true };
-
     } catch (err) {
       return { success: false, error: err.message };
     }
