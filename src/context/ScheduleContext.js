@@ -15,9 +15,16 @@ export const useSchedule = () => {
 // ─── Known typo / short-form → canonical name map ────────────────────────────
 // Key: lowercased normalized string   Value: canonical display name
 const TEACHER_CANONICAL = {
-  'dr. sheraly matanov':              'Dr. Sherali Matanov',
+  // Daniiar / Daniyar — same person, typo in Excel
   'dr. daniyar satybaldiev':          'Dr. Daniiar Satybaldiev',
   'mr. daniyar satybaldiev':          'Dr. Daniiar Satybaldiev',
+  'dr daniiar satybaldiev':           'Dr. Daniiar Satybaldiev',
+  // Nurlan — Mukambaev vs Mukambetov typo
+  'mr. nurlan mukambetov':            'Mr. Nurlan Mukambaev',
+  // Erustan spacing variants already handled by regex, but keep as safety net
+  'mr. erustan erkebulanov':          'Mr. Erustan Erkebulanov',
+  // Other typos / short-forms
+  'dr. sheraly matanov':              'Dr. Sherali Matanov',
   'mr. hussien chebsi':               'Mr. Hussein Chebsi',
   'mr. ahmad sarosh':                 'Dr. Ahmad Sarosh',
   'ms. cholpon alieva':               'Dr. Cholpon Alieva',
@@ -28,6 +35,8 @@ const TEACHER_CANONICAL = {
   'ms. meerim':                       'Ms. Meerim Chukaeva',
   'ms. meerim chukaeva (own device)': 'Ms. Meerim Chukaeva',
   'mr. murrey':                       'Mr. Murrey Eldred',
+  // Tattybubu — patronymic variant → short canonical form
+  'ms. tattybubu arap kyzy':          'Ms. Tattybubu',
 };
 
 // ─── Teacher name normalisation ───────────────────────────────────────────────
@@ -64,6 +73,9 @@ export function normalizeTeacherName(raw) {
   // 9. Remove trailing slash and anything after
   s = s.replace(/\s*\/.*$/, '').trim();
 
+  // 10. Strip trailing "+ ..." noise  (before TRAILING loop so "BIGLAB + make up" → "BIGLAB" → stripped)
+  s = s.replace(/\s*\+.*$/, '').trim();
+
   // 10. Repeatedly strip trailing room/location tokens until stable
   //     Matches: B110, B 202, b109, A204, LAB, LAB3, LAB3(210),
   //              BIGLAB, BigLab, LINK, WEB, link, и102
@@ -71,8 +83,6 @@ export function normalizeTeacherName(raw) {
   let prev;
   do { prev = s; s = s.replace(TRAILING_ROOM, '').trim(); } while (s !== prev);
 
-  // 11. Strip trailing "+ ..." noise
-  s = s.replace(/\s*\+.*$/, '').trim();
 
   // 12. Strip comma+room  e.g. ",B103"
   s = s.replace(/,\s*[Bb]\d+.*/g, '').trim();
@@ -92,7 +102,7 @@ export function normalizeTeacherName(raw) {
   // 16. Exclude garbage that isn't a teacher name
   if (!s) return '';
   if (/^[Bb]\d+(\(\w+\))?$/.test(s)) return '';  // bare room: "B201"
-  if (/^(ALATOO|German\s|DevOps\s|Time\s+club|Programs\s|COURSE)/i.test(s)) return '';
+  if (/^(ALATOO|German\s|DevOps\s|Time\s+club|Programs\s|COURSE|COM\b|\(COM\)|B201)/i.test(s)) return '';
 
   // 17. Apply canonical cleanup map for known typos / short forms
   const canonical = TEACHER_CANONICAL[s.toLowerCase()];
