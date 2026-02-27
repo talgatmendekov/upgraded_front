@@ -59,16 +59,48 @@ const TeacherTelegramManagement = () => {
   };
 
   const handleDeleteTelegramId = async (id, name) => {
-    if (!window.confirm(`${t('confirmDeleteTelegramId') || 'Remove Telegram ID for'} ${name}?`)) return;
+    if (!window.confirm(`Remove Telegram ID for ${name}?`)) return;
     try {
-      const res  = await fetch(`${API_URL}/teachers/${id}/telegram`, {
+      const url = `${API_URL}/teachers/${id}/telegram`;
+      console.log('DELETE', url);
+      const res = await fetch(url, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token()}` },
       });
-      const data = await res.json();
-      if (data.success) fetchTeachers();
-      else alert(`Error: ${data.error}`);
-    } catch (e) { alert(`Error: ${e.message}`); }
+      console.log('Response status:', res.status);
+      const text = await res.text();
+      console.log('Response body:', text);
+      let data;
+      try { data = JSON.parse(text); } catch { data = { success: false, error: text }; }
+      if (data.success) {
+        fetchTeachers();
+      } else {
+        alert('Delete failed (HTTP ' + res.status + '):\n' + (data.error || text));
+      }
+    } catch (e) {
+      alert('Network error: ' + e.message);
+    }
+  };
+
+  const handleDeleteTeacher = async (id, name) => {
+    if (!window.confirm(`⚠️ Permanently delete teacher "${name}" from the database?\nThis cannot be undone.`)) return;
+    try {
+      const url = `${API_URL}/teachers/${id}`;
+      const res = await fetch(url, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = { success: false, error: text }; }
+      if (data.success) {
+        fetchTeachers();
+      } else {
+        alert('Delete failed (HTTP ' + res.status + '):\n' + (data.error || text));
+      }
+    } catch (e) {
+      alert('Network error: ' + e.message);
+    }
   };
 
   // ── Group channel actions ───────────────────────────────────────────────────
@@ -86,16 +118,27 @@ const TeacherTelegramManagement = () => {
   };
 
   const handleDeleteGroupChannel = async (groupName) => {
-    if (!window.confirm(`${t('confirmDeleteGroupChannel') || 'Remove Telegram channel for group'} ${groupName}?`)) return;
+    if (!window.confirm(`Remove Telegram channel for group ${groupName}?`)) return;
     try {
-      const res  = await fetch(`${API_URL}/group-channels/${encodeURIComponent(groupName)}`, {
+      const url = `${API_URL}/group-channels/${encodeURIComponent(groupName)}`;
+      console.log('DELETE', url);
+      const res = await fetch(url, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token()}` },
       });
-      const data = await res.json();
-      if (data.success) fetchGroupChannels();
-      else alert(`Error: ${data.error}`);
-    } catch (e) { alert(`Error: ${e.message}`); }
+      console.log('Response status:', res.status);
+      const text = await res.text();
+      console.log('Response body:', text);
+      let data;
+      try { data = JSON.parse(text); } catch { data = { success: false, error: text }; }
+      if (data.success) {
+        fetchGroupChannels();
+      } else {
+        alert('Delete failed (HTTP ' + res.status + '):\n' + (data.error || text));
+      }
+    } catch (e) {
+      alert('Network error: ' + e.message);
+    }
   };
 
   if (loading) return <div className="loading">{t('loading') || 'Loading...'}</div>;
@@ -221,14 +264,22 @@ const TeacherTelegramManagement = () => {
                             >
                               ✏️ {t('edit') || 'Edit'}
                             </button>
-                            {/* Delete button — always shown so admin can clear the ID */}
+                            {/* Delete Telegram ID button */}
                             <button
                               onClick={() => handleDeleteTelegramId(teacher.id, teacher.name)}
                               className="btn btn-delete"
                               disabled={!teacher.telegram_id}
-                              title={!teacher.telegram_id ? (t('noIdToDelete') || 'No ID to delete') : (t('deleteTelegramId') || 'Remove Telegram ID')}
+                              title={!teacher.telegram_id ? 'No Telegram ID to remove' : 'Remove Telegram ID only'}
                             >
-                              🗑️ {t('delete') || 'Delete'}
+                              📵 {t('deleteTelegramId') || 'Remove ID'}
+                            </button>
+                            {/* Delete Teacher entirely button */}
+                            <button
+                              onClick={() => handleDeleteTeacher(teacher.id, teacher.name)}
+                              className="btn btn-delete-teacher"
+                              title="Delete this teacher from the database"
+                            >
+                              🗑️ {t('deleteTeacher') || 'Delete Teacher'}
                             </button>
                           </>
                         )}
