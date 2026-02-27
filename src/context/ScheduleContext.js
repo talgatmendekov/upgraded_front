@@ -19,6 +19,9 @@ const TEACHER_CANONICAL = {
   'dr. daniyar satybaldiev':          'Dr. Daniiar Satybaldiev',
   'mr. daniyar satybaldiev':          'Dr. Daniiar Satybaldiev',
   'dr daniiar satybaldiev':           'Dr. Daniiar Satybaldiev',
+  'mr. daniiar satybaldiev':          'Dr. Daniiar Satybaldiev',
+  'dr. daniar satybaldiev':           'Dr. Daniiar Satybaldiev',
+  'mr. daniar satybaldiev':           'Dr. Daniiar Satybaldiev',
   // Nurlan — Mukambaev vs Mukambetov typo
   'mr. nurlan mukambetov':            'Mr. Nurlan Mukambaev',
   // Erustan spacing variants already handled by regex, but keep as safety net
