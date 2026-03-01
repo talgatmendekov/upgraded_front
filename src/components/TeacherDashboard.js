@@ -10,42 +10,84 @@ const TeacherDashboard = () => {
   const { t, lang } = useLanguage();
   const typeLabels = SUBJECT_TYPE_LABELS[lang] || SUBJECT_TYPE_LABELS.en;
 
-  const [selectedTeacher, setSelectedTeacher] = useState(teachers[0] || '');
+  // ── Normalize helpers ──────────────────────────────────────────────────────
+  // teachers from context can be array of strings OR objects — handle both
+  const normalize = (name) =>
+    (typeof name === 'object' ? name?.name || name?.label || '' : name || '')
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ');  // collapse multiple spaces
+
+  // Build canonical teacher name list from schedule entries directly
+  // This guarantees we match what's actually in the schedule
+  const scheduleEntries = useMemo(() => Object.values(schedule || {}), [schedule]);
+
+  // Get unique teachers from SCHEDULE (not just context list) so no one is missed
+  const allTeacherNames = useMemo(() => {
+    const fromSchedule = new Set(
+      scheduleEntries
+        .map(e => e.teacher?.trim())
+        .filter(Boolean)
+    );
+    // Also include teachers from context list
+    const fromContext = (teachers || []).map(t =>
+      typeof t === 'object' ? (t.name || t.label || '') : String(t || '')
+    ).map(s => s.trim()).filter(Boolean);
+
+    fromContext.forEach(n => fromSchedule.add(n));
+
+    // Sort alphabetically
+    return Array.from(fromSchedule).sort((a, b) => a.localeCompare(b));
+  }, [scheduleEntries, teachers]);
+
+  const [selectedTeacher, setSelectedTeacher] = useState('');
+
+  // Set default selected teacher on first load
+  const effectiveSelected = selectedTeacher || allTeacherNames[0] || '';
 
   // Build full stats for all teachers
   const allStats = useMemo(() => {
-    return teachers.map(teacher => {
-      const classes = Object.values(schedule).filter(
-        e => e.teacher?.toLowerCase() === teacher.toLowerCase()
-      );
+    return allTeacherNames.map(teacher => {
+      const normTeacher = normalize(teacher);
+
+      // Match by normalized name — handles whitespace/case differences
+      const classes = scheduleEntries.filter(e => {
+        const normEntry = normalize(e.teacher);
+        return normEntry === normTeacher;
+      });
+
       const byDay = {};
-      days.forEach(d => { byDay[d] = []; });
-      classes.forEach(c => { if (byDay[c.day]) byDay[c.day].push(c); });
+      (days || []).forEach(d => { byDay[d] = []; });
+      classes.forEach(c => {
+        if (c.day && byDay[c.day] !== undefined) byDay[c.day].push(c);
+      });
 
       const byType = {};
-      SUBJECT_TYPES.forEach(st => { byType[st.value] = 0; });
+      (SUBJECT_TYPES || []).forEach(st => { byType[st.value] = 0; });
       classes.forEach(c => {
-        const type = c.subjectType || 'lecture';
+        const type = c.subjectType || c.subject_type || 'lecture';
         byType[type] = (byType[type] || 0) + 1;
       });
 
-      const freeDays = days.filter(d => byDay[d].length === 0);
+      const freeDays = (days || []).filter(d => byDay[d]?.length === 0);
 
       return { teacher, classes, byDay, byType, freeDays, total: classes.length };
     }).sort((a, b) => b.total - a.total);
-  }, [schedule, teachers, days]);
+  }, [allTeacherNames, scheduleEntries, days]);
 
   // Selected teacher detail
   const detail = useMemo(() => {
-    return allStats.find(s => s.teacher === selectedTeacher);
-  }, [allStats, selectedTeacher]);
+    return allStats.find(s => s.teacher === effectiveSelected);
+  }, [allStats, effectiveSelected]);
 
-  // Heatmap: for selected teacher, intensity = classes per (day, time) slot
+  // Heatmap
   const heatmap = useMemo(() => {
     if (!detail) return {};
     const map = {};
     detail.classes.forEach(c => {
-      map[`${c.day}-${c.time}`] = (map[`${c.day}-${c.time}`] || 0) + 1;
+      const key = `${c.day}-${c.time}`;
+      map[key] = (map[key] || 0) + 1;
     });
     return map;
   }, [detail]);
@@ -53,15 +95,15 @@ const TeacherDashboard = () => {
   const maxHeat = Math.max(...Object.values(heatmap), 1);
 
   const heatColor = (val) => {
-    if (!val) return 'transparent';
+    if (!val) return undefined;
     const intensity = val / maxHeat;
     const r = Math.round(37  + (239 - 37)  * (1 - intensity));
     const g = Math.round(99  + (68  - 99)  * (1 - intensity));
     const b = Math.round(235 + (68  - 235) * (1 - intensity));
-    return `rgba(${r},${g},${b},${0.15 + intensity * 0.75})`;
+    return `rgba(${r},${g},${b},${0.2 + intensity * 0.75})`;
   };
 
-  if (teachers.length === 0) {
+  if (!allTeacherNames.length) {
     return (
       <div className="dashboard-empty">
         <div className="empty-icon">👨‍🏫</div>
@@ -80,7 +122,7 @@ const TeacherDashboard = () => {
         {allStats.map(stat => (
           <button
             key={stat.teacher}
-            className={`teacher-card ${selectedTeacher === stat.teacher ? 'active' : ''}`}
+            className={`teacher-card ${effectiveSelected === stat.teacher ? 'active' : ''}`}
             onClick={() => setSelectedTeacher(stat.teacher)}
           >
             <div className="teacher-card-name">👨‍🏫 {stat.teacher}</div>
@@ -89,24 +131,24 @@ const TeacherDashboard = () => {
               <span className="card-label">{t('classesPerWeek') || 'classes/week'}</span>
             </div>
             <div className="teacher-card-days">
-              {days.map(day => (
+              {(days || []).map(day => (
                 <span
                   key={day}
                   className={`day-dot ${stat.byDay[day]?.length > 0 ? 'busy' : 'free'}`}
-                  title={`${t(day)}: ${stat.byDay[day]?.length || 0} classes`}
+                  title={`${t(day) || day}: ${stat.byDay[day]?.length || 0} classes`}
                 />
               ))}
             </div>
             {stat.freeDays.length > 0 && (
               <div className="teacher-card-free">
-                🟢 {t('freeDays') || 'Free'}: {stat.freeDays.map(d => t(d).slice(0,3)).join(', ')}
+                🟢 {t('freeDays') || 'Free'}: {stat.freeDays.map(d => (t(d) || d).slice(0,3)).join(', ')}
               </div>
             )}
           </button>
         ))}
       </div>
 
-      {/* Detail panel for selected teacher */}
+      {/* Detail panel */}
       {detail && (
         <div className="detail-panel">
           <div className="detail-header">
@@ -117,7 +159,7 @@ const TeacherDashboard = () => {
                 <span className="chip-label">{t('totalClasses') || 'Total Classes'}</span>
               </div>
               <div className="summary-chip">
-                <span className="chip-num">{days.length - detail.freeDays.length}</span>
+                <span className="chip-num">{(days || []).length - detail.freeDays.length}</span>
                 <span className="chip-label">{t('workDays') || 'Work Days'}</span>
               </div>
               <div className="summary-chip free">
@@ -131,7 +173,7 @@ const TeacherDashboard = () => {
           <div className="type-breakdown">
             <h4>{t('bySubjectType') || 'By Subject Type'}</h4>
             <div className="type-bars">
-              {SUBJECT_TYPES.map(st => {
+              {(SUBJECT_TYPES || []).map(st => {
                 const count = detail.byType[st.value] || 0;
                 const pct = detail.total > 0 ? (count / detail.total) * 100 : 0;
                 return (
@@ -155,9 +197,9 @@ const TeacherDashboard = () => {
           <div className="day-breakdown">
             <h4>{t('byDay') || 'Classes Per Day'}</h4>
             <div className="day-bars">
-              {days.map(day => {
+              {(days || []).map(day => {
                 const count = detail.byDay[day]?.length || 0;
-                const maxDay = Math.max(...days.map(d => detail.byDay[d]?.length || 0), 1);
+                const maxDay = Math.max(...(days || []).map(d => detail.byDay[d]?.length || 0), 1);
                 const pct = (count / maxDay) * 100;
                 return (
                   <div key={day} className="day-bar-col">
@@ -165,7 +207,7 @@ const TeacherDashboard = () => {
                       <div className="day-bar-fill" style={{ height: `${pct}%` }} />
                     </div>
                     <span className="day-bar-num">{count}</span>
-                    <span className="day-bar-label">{t(day).slice(0,3)}</span>
+                    <span className="day-bar-label">{(t(day) || day).slice(0,3)}</span>
                   </div>
                 );
               })}
@@ -180,23 +222,23 @@ const TeacherDashboard = () => {
                 <thead>
                   <tr>
                     <th className="hm-corner" />
-                    {timeSlots.map(time => (
+                    {(timeSlots || []).map(time => (
                       <th key={time} className="hm-time">{time}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {days.map(day => (
+                  {(days || []).map(day => (
                     <tr key={day}>
-                      <td className="hm-day">{t(day).slice(0,3)}</td>
-                      {timeSlots.map(time => {
+                      <td className="hm-day">{(t(day) || day).slice(0,3)}</td>
+                      {(timeSlots || []).map(time => {
                         const key = `${day}-${time}`;
                         const val = heatmap[key] || 0;
                         const cls = detail.classes.find(c => c.day === day && c.time === time);
                         return (
                           <td key={time}
                             className={`hm-cell ${val > 0 ? 'hm-busy' : 'hm-free'}`}
-                            style={{ background: heatColor(val) }}
+                            style={val > 0 ? { background: heatColor(val) } : undefined}
                             title={cls ? `${cls.course} (${cls.group})` : ''}
                           >
                             {val > 0 && <span className="hm-dot" />}
@@ -219,21 +261,26 @@ const TeacherDashboard = () => {
           <div className="class-list-section">
             <h4>{t('allClasses') || 'All Classes This Week'}</h4>
             <div className="class-list">
-              {days.map(day => detail.byDay[day]?.length > 0 && (
+              {(days || []).map(day => detail.byDay[day]?.length > 0 && (
                 <div key={day} className="class-list-day">
-                  <div className="class-list-day-header">{t(day)}</div>
-                  {detail.byDay[day].map((cls, i) => {
-                    const ts = SUBJECT_TYPES.find(s => s.value === (cls.subjectType || 'lecture'));
-                    return (
-                      <div key={i} className="class-list-item"
-                        style={{ borderLeft: `3px solid ${ts?.color}` }}>
-                        <span className="cli-time">{cls.time}</span>
-                        <span className="cli-course">{cls.course}</span>
-                        <span className="cli-group">{cls.group}</span>
-                        {cls.room && <span className="cli-room">🚪 {cls.room}</span>}
-                      </div>
-                    );
-                  })}
+                  <div className="class-list-day-header">{t(day) || day}</div>
+                  {detail.byDay[day]
+                    .slice()
+                    .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+                    .map((cls, i) => {
+                      const ts = (SUBJECT_TYPES || []).find(
+                        s => s.value === (cls.subjectType || cls.subject_type || 'lecture')
+                      );
+                      return (
+                        <div key={i} className="class-list-item"
+                          style={{ borderLeft: `3px solid ${ts?.color || '#4f46e5'}` }}>
+                          <span className="cli-time">{cls.time}</span>
+                          <span className="cli-course">{cls.course}</span>
+                          <span className="cli-group">{cls.group}</span>
+                          {cls.room && <span className="cli-room">🚪 {cls.room}</span>}
+                        </div>
+                      );
+                    })}
                 </div>
               ))}
             </div>
