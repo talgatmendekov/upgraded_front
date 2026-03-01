@@ -5,7 +5,13 @@ import BroadcastMessage from './BroadcastMessage';
 import './TeacherTelegramManagement.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
-const getToken = () => localStorage.getItem('scheduleToken');
+const getToken = () =>
+  localStorage.getItem('token') ||
+  localStorage.getItem('scheduleToken') ||
+  localStorage.getItem('authToken') ||
+  localStorage.getItem('jwt') ||
+  sessionStorage.getItem('token') ||
+  sessionStorage.getItem('scheduleToken') || '';
 
 const TeacherTelegramManagement = ({ isDark = false }) => {
   // ── teachers comes from context — SAME list as the filter dropdown, zero dupes

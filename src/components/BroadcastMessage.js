@@ -19,7 +19,13 @@ const BroadcastMessage = () => {
   const [subject, setSubject] = useState('');
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
-  const token   = () => localStorage.getItem('scheduleToken');
+  const token = () =>
+    localStorage.getItem('token') ||
+    localStorage.getItem('scheduleToken') ||
+    localStorage.getItem('authToken') ||
+    localStorage.getItem('jwt') ||
+    sessionStorage.getItem('token') ||
+    sessionStorage.getItem('scheduleToken') || '';
 
   useEffect(() => {
     const load = async () => {
