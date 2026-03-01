@@ -36,6 +36,7 @@ const TeacherTelegramManagement = ({ isDark = false }) => {
   const [newGroupName, setNewGroupName]     = useState('');
   const [newGroupChat, setNewGroupChat]     = useState('');
   const [groupChatInput, setGroupChatInput] = useState('');
+  const [confirmDelete, setConfirmDelete]   = useState(null); // group_name pending delete
 
   // ── Fetch DB data ────────────────────────────────────────────────────────────
   const fetchDbTeachers = async () => {
@@ -56,6 +57,12 @@ const TeacherTelegramManagement = ({ isDark = false }) => {
 
   const fetchAll = async () => {
     setLoading(true);
+    // Wait up to 2s for token to be available (App.js sets it async)
+    let attempts = 0;
+    while (!getToken() && attempts < 10) {
+      await new Promise(r => setTimeout(r, 200));
+      attempts++;
+    }
     await Promise.all([fetchDbTeachers(), fetchGroups()]);
     setLoading(false);
   };
@@ -206,13 +213,12 @@ const TeacherTelegramManagement = ({ isDark = false }) => {
   const deleteGroup = async (groupName) => {
     setGroupError('');
     const url = `${API_URL}/group-channels/${encodeURIComponent(groupName)}`;
-    console.log('Deleting:', url);
     const data = await apiCall(url, 'DELETE');
-    console.log('Delete result:', data);
     if (data.success) {
+      setGroups(prev => prev.filter(g => g.group_name !== groupName));
       fetchGroups();
     } else {
-      setGroupError('Delete failed: ' + (data.error || 'unknown error'));
+      setGroupError('Delete failed: ' + (data.error || 'unknown'));
     }
   };
 
@@ -443,8 +449,15 @@ const TeacherTelegramManagement = ({ isDark = false }) => {
                         </div>
                       ) : (
                         <div className="act-row">
-                          <button className="act edit" onClick={() => { setEditingGroup(g.group_name); setGroupChatInput(g.chat_id||''); }}>Edit</button>
-                          <button className="act del" onClick={() => deleteGroup(g.group_name)}>Delete</button>
+                          <button className="act edit" onClick={() => { setEditingGroup(g.group_name); setGroupChatInput(g.chat_id||''); setConfirmDelete(null); }}>Edit</button>
+                          {confirmDelete === g.group_name ? (
+                            <>
+                              <button className="act del" onClick={() => { deleteGroup(g.group_name); setConfirmDelete(null); }}>Sure?</button>
+                              <button className="act cancel" onClick={() => setConfirmDelete(null)}>No</button>
+                            </>
+                          ) : (
+                            <button className="act del" onClick={() => setConfirmDelete(g.group_name)}>Delete</button>
+                          )}
                         </div>
                       )}
                     </td>
